@@ -228,6 +228,9 @@ type Channel struct {
 	// The ID of the parent channel, if the channel is under a category
 	ParentID int64 `json:"parent_id,string"`
 
+	// Tags that are currently applied to a forum
+	AppliedTags []string `json:"applied_tags"`
+
 	RateLimitPerUser int `json:"rate_limit_per_user"`
 
 	ThreadMetadata *ThreadMetadata `json:"thread_metadata"`

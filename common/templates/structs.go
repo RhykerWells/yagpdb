@@ -24,6 +24,7 @@ type CtxChannel struct {
 	Bitrate              int                              `json:"bitrate"`
 	PermissionOverwrites []*discordgo.PermissionOverwrite `json:"permission_overwrites"`
 	ParentID             int64                            `json:"parent_id"`
+	AppliedTags          []string                         `json:"applied_tags"`
 }
 
 func (c *CtxChannel) Mention() (string, error) {
@@ -52,6 +53,7 @@ func CtxChannelFromCS(cs *dstate.ChannelState) *CtxChannel {
 		Position:             cs.Position,
 		Bitrate:              cs.Bitrate,
 		PermissionOverwrites: cop,
+		AppliedTags:          cs.AppliedTags,
 		ParentID:             cs.ParentID,
 	}
 
