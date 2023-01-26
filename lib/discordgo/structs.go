@@ -228,10 +228,14 @@ type Channel struct {
 	// The ID of the parent channel, if the channel is under a category
 	ParentID int64 `json:"parent_id,string"`
 
+	// Array of available tags for use within forum channels
 	AvailableTags []ForumTag `json:"available_tags"`
 
 	// Tags that are currently applied to a forum
 	AppliedTags []string `json:"applied_tags"`
+
+	// Default reaction emoji on new forum posts
+	DefaultReactionEmoji ForumDefaultReaction `json:"default_reaction_emoji"`
 
 	RateLimitPerUser int `json:"rate_limit_per_user"`
 
@@ -251,11 +255,20 @@ func (c *Channel) Mention() string {
 	return fmt.Sprintf("<#%d>", c.ID)
 }
 
+// ForumTag specifies any data pertaining to available tags
 type ForumTag struct {
 	ID        string `json:"id,omitempty"`
 	Name      string `json:"name"`
 	Moderated bool   `json:"moderated"`
 	EmojiID   string `json:"emoji_id,omitempty"`
+	EmojiName string `json:"emoji_name,omitempty"`
+}
+
+// Specifies the default reaction that will be assigned to a forum post upon creation
+type ForumDefaultReaction struct {
+	// The id of a guild's custom emoji.
+	EmojiID string `json:"emoji_id,omitempty"`
+	// The unicode character of the emoji.
 	EmojiName string `json:"emoji_name,omitempty"`
 }
 

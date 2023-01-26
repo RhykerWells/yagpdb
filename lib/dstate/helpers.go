@@ -163,6 +163,7 @@ func ChannelStateFromDgo(c *discordgo.Channel) ChannelState {
 		Bitrate:              c.Bitrate,
 		AppliedTags:          c.AppliedTags,
 		AvailableTags:        c.AvailableTags,
+		DefaultReactionEmoji: c.DefaultReactionEmoji,
 	}
 }
 

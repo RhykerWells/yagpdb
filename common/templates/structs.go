@@ -24,8 +24,9 @@ type CtxChannel struct {
 	Bitrate              int                              `json:"bitrate"`
 	PermissionOverwrites []*discordgo.PermissionOverwrite `json:"permission_overwrites"`
 	ParentID             int64                            `json:"parent_id"`
-	AvailableTags        []discordgo.ForumTag                    `json:"available_tags"`
+	AvailableTags        []discordgo.ForumTag             `json:"available_tags"`
 	AppliedTags          []string                         `json:"applied_tags"`
+	DefaultReactionEmoji discordgo.ForumDefaultReaction   `json:"default_reaction_emoji"`
 }
 
 func (c *CtxChannel) Mention() (string, error) {
@@ -56,6 +57,7 @@ func CtxChannelFromCS(cs *dstate.ChannelState) *CtxChannel {
 		PermissionOverwrites: cop,
 		AppliedTags:          cs.AppliedTags,
 		AvailableTags:        cs.AvailableTags,
+		DefaultReactionEmoji: cs.DefaultReactionEmoji,
 		ParentID:             cs.ParentID,
 	}
 
