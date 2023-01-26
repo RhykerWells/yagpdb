@@ -21,5 +21,3 @@ cmd/shardorchestrator/shardorchestrator
 *.agent
 *.exe
 cmd/shardorchestrator/capturepanics
-common/templates/context.go
-customcommands/bot.go
