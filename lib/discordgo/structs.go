@@ -228,6 +228,8 @@ type Channel struct {
 	// The ID of the parent channel, if the channel is under a category
 	ParentID int64 `json:"parent_id,string"`
 
+	AvailableTags []ForumTag `json:"available_tags"`
+
 	// Tags that are currently applied to a forum
 	AppliedTags []string `json:"applied_tags"`
 
@@ -247,6 +249,14 @@ func (c *Channel) GetGuildID() int64 {
 // Mention returns a string which mentions the channel
 func (c *Channel) Mention() string {
 	return fmt.Sprintf("<#%d>", c.ID)
+}
+
+type ForumTag struct {
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name"`
+	Moderated bool   `json:"moderated"`
+	EmojiID   string `json:"emoji_id,omitempty"`
+	EmojiName string `json:"emoji_name,omitempty"`
 }
 
 // A ChannelEdit holds Channel Feild data for a channel edit.

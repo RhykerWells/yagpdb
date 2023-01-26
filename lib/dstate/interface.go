@@ -215,6 +215,7 @@ type ChannelState struct {
 	OwnerID          int64                     `json:"owner_id,string"`
 	ThreadMetadata   *discordgo.ThreadMetadata `json:"thread_metadata"`
 	AppliedTags      []string                  `json:"applied_tags"`
+	AvailableTags    []discordgo.ForumTag                `json:available_tags"`
 	PermissionOverwrites []discordgo.PermissionOverwrite `json:"permission_overwrites"`
 }
 
@@ -231,6 +232,14 @@ func (c *ChannelState) Mention() (string, error) {
 		return "", errors.New("channel not found")
 	}
 	return "<#" + discordgo.StrID(c.ID) + ">", nil
+}
+
+type ForumTag struct {
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name"`
+	Moderated bool   `json:"moderated"`
+	EmojiID   string `json:"emoji_id,omitempty"`
+	EmojiName string `json:"emoji_name,omitempty"`
 }
 
 // A fully cached member
