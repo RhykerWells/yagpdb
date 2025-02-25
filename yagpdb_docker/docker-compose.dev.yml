@@ -1,3 +1,5 @@
+name: winnepacacabot
+
 volumes:
   db:
   redis:
@@ -9,6 +11,7 @@ networks:
 
 services:
   app:
+    container_name: winnepacacabot-app
     build:
       # We change context so that we can copy the local repo in during
       # development
@@ -31,12 +34,13 @@ services:
       - soundboard:/app/soundboard
       - .:/app/source
     ports:
-      - '80:80'
-      - '443:443'
+      - '8089:80'
+      - '9999:443'
     env_file:
       - app.env
 
   redis:
+    container_name: winnepacacabot-redis-db
     image: docker.io/redis
     restart: unless-stopped
     networks:
@@ -45,6 +49,7 @@ services:
       - redis:/data
 
   db:
+    container_name: winnepacacabot-postgres-db
     image: docker.io/postgres:11
     restart: unless-stopped
     volumes:
