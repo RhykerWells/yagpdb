@@ -11,7 +11,7 @@ networks:
 
 services:
   app:
-    container_name: winnepacacabot-app
+    container_name: winnepacacabot-dev-app
     build:
       # We change context so that we can copy the local repo in during
       # development
@@ -37,10 +37,10 @@ services:
       - '8089:80'
       - '9999:443'
     env_file:
-      - app.env
+      - app.dev.env
 
   redis:
-    container_name: winnepacacabot-redis-db
+    container_name: winnepacacabot-dev-redis-db
     image: docker.io/redis
     restart: unless-stopped
     networks:
@@ -49,12 +49,12 @@ services:
       - redis:/data
 
   db:
-    container_name: winnepacacabot-postgres-db
+    container_name: winnepacacabot-dev-postgres-db
     image: docker.io/postgres:11
     restart: unless-stopped
     volumes:
       - db:/var/lib/postgresql/data
     networks:
-     - default
+      - default
     env_file:
-      - db.env
+      - db.dev.env

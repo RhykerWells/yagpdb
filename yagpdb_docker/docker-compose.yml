@@ -1,3 +1,5 @@
+name: winnepacacabot
+
 volumes:
   db:
   redis:
@@ -9,12 +11,8 @@ networks:
 
 services:
   app:
-    # We don't provide an official image, but there is a community-made image you can try:
-    #  - teyker/yagpdb (https://hub.docker.com/r/teyker/yagpdb)
-    #
-    # Note that we do not take responsibility for anything that happens as a result of using
-    # the image above. uncomment the below line in case your want to put your own image.
-    #image: PUT_YOUR_OWN_IMAGE_HERE
+    container_name: winnepacacabot-app
+    image: ranger-4297/yagpdb-winnepacaca
     build:
       context: ../
       dockerfile: yagpdb_docker/Dockerfile
@@ -24,7 +22,7 @@ services:
       - "-all"
       - "-pa"
       - "-exthttps=false"
-      - "-https=true"
+      - "-https=false"
     depends_on:
       - redis
       - db
@@ -34,12 +32,13 @@ services:
       - cert_cache:/app/cert
       - soundboard:/app/soundboard
     ports:
-      - '80:80'
-      - '443:443'
+      - '8089:80'
+      - '9999:443'
     env_file:
       - app.env
 
   redis:
+    container_name: winnepacacabot-redis-db
     image: docker.io/redis
     restart: unless-stopped
     networks:
@@ -48,6 +47,7 @@ services:
       - redis:/data
 
   db:
+    container_name: winnepacacabot-postgres-db
     image: docker.io/postgres:11
     restart: unless-stopped
     volumes:
