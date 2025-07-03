@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/botlabs-gg/yagpdb/v2/commands"
 	"github.com/botlabs-gg/yagpdb/v2/common"
 	"github.com/botlabs-gg/yagpdb/v2/common/backgroundworkers"
 	"github.com/botlabs-gg/yagpdb/v2/lib/dca"
 	"github.com/botlabs-gg/yagpdb/v2/soundboard/models"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"goji.io/pat"
 )
 
