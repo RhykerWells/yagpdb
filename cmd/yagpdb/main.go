@@ -24,7 +24,6 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/commands"
 	"github.com/RhykerWells/yagpdb/v2/customcommands"
 	"github.com/RhykerWells/yagpdb/v2/discordlogger"
-	"github.com/RhykerWells/yagpdb/v2/roblox"
 	"github.com/RhykerWells/yagpdb/v2/logs"
 	"github.com/RhykerWells/yagpdb/v2/moderation"
 	"github.com/RhykerWells/yagpdb/v2/notifications"
@@ -79,7 +78,6 @@ func main() {
 	prom.RegisterPlugin()
 	featureflags.RegisterPlugin()
 	trivia.RegisterPlugin()
-	roblox.RegisterPlugin()
 	// Register confusables replacer
 	confusables.Init()
 

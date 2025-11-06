@@ -1,11 +1,12 @@
 package templates
 
 import (
-	"github.com/RhykerWells/yagpdb/v2/roblox"
+	"github.com/RhykerWells/robloxgo"
 )
 
-func (c *Context) tmplGetRobloxUserByID(target interface{}) (interface{}, error) {
-	user, err := roblox.RobloxClient.GetUserByID(ToString(target))
+func (c *Context) tmplGetRobloxUserByID(apiKey interface{}, target interface{}) (interface{}, error) {
+	robloxClient, _ := robloxgo.Create(ToString(apiKey))
+	user, err := robloxClient.GetUserByID(ToString(target))
 	if err != nil {
 		return user, nil
 	}
@@ -13,8 +14,9 @@ func (c *Context) tmplGetRobloxUserByID(target interface{}) (interface{}, error)
 	return user, err
 }
 
-func (c *Context) tmplGetRobloxUserByUsername(target interface{}) (interface{}, error) {
-	user, err := roblox.RobloxClient.GetUserByUsername(ToString(target))
+func (c *Context) tmplGetRobloxUserByUsername(apiKey interface{}, target interface{}) (interface{}, error) {
+	robloxClient, _ := robloxgo.Create(ToString(apiKey))
+	user, err := robloxClient.GetUserByUsername(ToString(target))
 	if err != nil {
 		return nil, err
 	}
@@ -22,14 +24,19 @@ func (c *Context) tmplGetRobloxUserByUsername(target interface{}) (interface{}, 
 	return user, nil
 }
 
-func (c *Context) tmplGetRobloxGroupByID(target interface{}) (interface{}, error) {
-	group, _ := roblox.RobloxClient.GetGroupByID(ToString(target))
+func (c *Context) tmplGetRobloxGroupByID(apiKey interface{}, target interface{}) (interface{}, error) {
+	robloxClient, _ := robloxgo.Create(ToString(apiKey))
+	group, err := robloxClient.GetGroupByID(ToString(target))
+	if err != nil {
+		return nil, err
+	}
 
 	return group, nil // Don't return err, a nil output should indicate unknown/invalid group
 }
 
-func (c *Context) tmplUpdateMemberRole(group interface{}, target interface{}, role interface{}) (interface{}, error) {
-	robloxGroup, err := roblox.RobloxClient.GetGroupByID(ToString(group))
+func (c *Context) tmplUpdateMemberRole(apiKey, group interface{}, target interface{}, role interface{}) (interface{}, error) {
+	robloxClient, _ := robloxgo.Create(ToString(apiKey))
+	robloxGroup, err := robloxClient.GetGroupByID(ToString(group))
 	if err != nil {
 		return nil, err
 	}

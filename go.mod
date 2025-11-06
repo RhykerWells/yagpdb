@@ -58,7 +58,7 @@ require (
 	golang.org/x/net v0.38.0
 	golang.org/x/oauth2 v0.10.0
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.27.0
 	golang.org/x/time v0.3.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -102,7 +102,7 @@ require (
 require (
 	github.com/AlekSi/pointer v1.2.0
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/RhykerWells/robloxgo v1.0.0-rc.3
+	github.com/RhykerWells/robloxgo v1.0.0-rc.4
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
