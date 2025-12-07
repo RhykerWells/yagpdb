@@ -12,7 +12,7 @@ networks:
 services:
   app:
     container_name: veilbot-app
-    image: RhykerWells/yagpdb-iota:upstream
+    image: RhykerWells/yagpdb-iota:modalTest
     build:
       context: ../
       dockerfile: yagpdb_docker/Dockerfile

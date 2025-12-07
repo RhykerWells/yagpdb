@@ -102,6 +102,7 @@ var (
 		"clabel":           CreateLabel,
 		"ctextInput":       CreateTextInput,
 		"ctextDisplay":     CreateTextDisplay,
+		"cfileUpload":		CreateFileUpload,
 
 		// message builders
 		"cembed":             CreateEmbed,

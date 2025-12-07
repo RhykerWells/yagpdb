@@ -1431,6 +1431,14 @@ func ExecuteCustomCommandFromModal(cc *models.CustomCommand, gs *dstate.GuildSet
 					"value":     sm.Values,
 					"custom_id": cID,
 				})
+			} else if fu, ok := comp.Component.(*discordgo.FileUpload); ok {
+				cID, _ := strings.CutPrefix(fu.CustomID, templates.TemplateCustomIDPrefix)
+				cmdValues = append(cmdValues, fu.Values)
+				modalValues.Set(cID, templates.SDict{
+					"type": fu.Type(),
+					"value": fu.Values,
+					"custom_id": cID,
+				})
 			}
 		}
 	}
