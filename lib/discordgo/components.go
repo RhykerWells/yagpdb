@@ -29,6 +29,7 @@ const (
 	ActivityContentComponent       ComponentType = 16
 	ContainerComponent             ComponentType = 17
 	LabelComponent                 ComponentType = 18
+	FileUploadComponent			   ComponentType = 19
 )
 
 // MessageComponent is a base interface for all message components.
@@ -455,6 +456,43 @@ const (
 
 // IsInteractive is a method to assert the component as interactive.
 func (TextInput) IsInteractive() bool {
+	return true
+}
+
+// FileUpload represents file upload component
+type FileUpload struct {
+	CustomID 	string  `json:"custom_id"`
+	MinValues 	int 	`json:"min_values,omitempty"`
+	MaxValues	int 	`json:"max_values,omitempty"`
+	Required 	bool	`json:"required"`
+
+	Values 		[]string `json:"values,omitempty"`
+}
+
+// Type is a method to get the type of a component.
+func (FileUpload) Type() ComponentType {
+	return FileUploadComponent
+}
+
+func (FileUpload) IsAllowedInLabel() bool {
+	return true
+}
+
+// MarshalJSON is a method for marshaling FileUpload to a JSON object.
+func (m FileUpload) MarshalJSON() ([]byte, error) {
+	type fileUpload FileUpload
+
+	return json.Marshal(struct {
+		fileUpload
+		Type ComponentType `json:"type"`
+	}{
+		fileUpload: fileUpload(m),
+		Type:      m.Type(),
+	})
+}
+
+// IsInteractive is a method to assert the component as interactive.
+func (FileUpload) IsInteractive() bool {
 	return true
 }
 
