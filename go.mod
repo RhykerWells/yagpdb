@@ -1,6 +1,6 @@
 module github.com/RhykerWells/yagpdb/v2
 
-go 1.23.3
+go 1.25.4
 
 require (
 	emperror.dev/errors v0.8.1
@@ -54,11 +54,11 @@ require (
 	github.com/viant/toolbox v0.34.5
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	goji.io v2.0.2+incompatible
-	golang.org/x/crypto v0.38.0
-	golang.org/x/net v0.38.0
-	golang.org/x/oauth2 v0.10.0
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0
+	golang.org/x/crypto v0.45.0
+	golang.org/x/net v0.47.0
+	golang.org/x/oauth2 v0.27.0
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0
 	golang.org/x/time v0.3.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -77,8 +77,7 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.21.0 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/aarondl/inflect v0.0.2 // indirect
@@ -90,7 +89,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect

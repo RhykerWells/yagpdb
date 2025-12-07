@@ -381,7 +381,7 @@ func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
 			v, _ := indirect(reflect.ValueOf(val))
 			if v.Kind() == reflect.Slice {
 				buttons := []*discordgo.Button{}
-				const maxButtons = 25 // Discord limitation
+				const maxButtons = 40 // Discord limitation
 				for i := 0; i < v.Len() && i < maxButtons; i++ {
 					button, err := CreateButton(v.Index(i).Interface())
 					if err != nil {
@@ -482,6 +482,11 @@ func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
 				continue
 			}
 			msg.Flags |= discordgo.MessageFlagsSuppressEmbeds
+		case "is_components_v2":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsIsComponentsV2
 		default:
 			return nil, errors.New(`invalid key "` + key + `" passed to send message builder.`)
 		}
@@ -643,6 +648,11 @@ func CreateMessageEdit(values ...interface{}) (*discordgo.MessageEdit, error) {
 				continue
 			}
 			msg.Flags |= discordgo.MessageFlagsSuppressEmbeds
+		case "is_components_v2":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsIsComponentsV2
 		default:
 			return nil, errors.New(`invalid key "` + key + `" passed to message edit builder`)
 		}
@@ -757,39 +767,39 @@ func in(l interface{}, v interface{}) bool {
 	lv, _ := indirect(reflect.ValueOf(l))
 	vv := reflect.ValueOf(v)
 
-	if !reflect.ValueOf(vv).IsZero() {
-		switch lv.Kind() {
-		case reflect.Array, reflect.Slice:
-			for i := 0; i < lv.Len(); i++ {
-				lvv := lv.Index(i)
-				lvv, isNil := indirect(lvv)
-				if isNil {
-					continue
-				}
-				switch lvv.Kind() {
-				case reflect.String:
-					if vv.Type() == lvv.Type() && vv.String() == lvv.String() {
-						return true
-					}
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					switch vv.Kind() {
-					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-						if vv.Int() == lvv.Int() {
-							return true
-						}
-					}
-				case reflect.Float32, reflect.Float64:
-					switch vv.Kind() {
-					case reflect.Float32, reflect.Float64:
-						if vv.Float() == lvv.Float() {
-							return true
-						}
-					}
-				}
+	if reflect.ValueOf(vv).IsZero() {
+		return false
+	}
+
+	switch lv.Kind() {
+	case reflect.String:
+		if vv.Type() == lv.Type() && strings.Contains(lv.String(), vv.String()) {
+			return true
+		}
+	case reflect.Array, reflect.Slice:
+		for i := range lv.Len() {
+			lvv := lv.Index(i)
+			lvv, isNil := indirect(lvv)
+			if isNil {
+				continue
 			}
-		case reflect.String:
-			if vv.Type() == lv.Type() && strings.Contains(lv.String(), vv.String()) {
-				return true
+			switch {
+			case lvv.Kind() == reflect.String:
+				if vv.Type() == lvv.Type() && vv.String() == lvv.String() {
+					return true
+				}
+			case lvv.CanInt() && vv.CanInt():
+				if vv.Int() == lvv.Int() {
+					return true
+				}
+			case lvv.CanUint() && vv.CanUint():
+				if vv.Uint() == lvv.Uint() {
+					return true
+				}
+			case lvv.CanFloat() && vv.CanFloat():
+				if vv.Float() == lvv.Float() {
+					return true
+				}
 			}
 		}
 	}
@@ -1124,8 +1134,12 @@ func tmplLog(arguments ...interface{}) (float64, error) {
 	return logarithm, nil
 }
 
-func tmplBitwiseAnd(arg1, arg2 interface{}) int {
-	return tmplToInt(arg1) & tmplToInt(arg2)
+func tmplBitwiseAnd(arg0 interface{}, args ...interface{}) int {
+	res := tmplToInt(arg0)
+	for _, arg := range args {
+		res &= tmplToInt(arg)
+	}
+	return res
 }
 
 func tmplBitwiseOr(args ...interface{}) (res int) {
@@ -1320,8 +1334,8 @@ func sequence(start, stop int) ([]int, error) {
 		return nil, errors.New("stop is less than start?")
 	}
 
-	if stop-start > 10000 {
-		return nil, errors.New("Sequence max length is 10000")
+	if stop-start > MaxSliceLength {
+		return nil, fmt.Errorf("sequence max length is %d", MaxSliceLength)
 	}
 
 	out := make([]int, stop-start)

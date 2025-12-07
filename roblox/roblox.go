@@ -6,8 +6,6 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/common/config"
 )
 
-//go:generate sqlboiler --no-hooks --add-soft-deletes psql
-
 var (
 	RobloxClient *robloxgo.Client
 	clientAPIKey = config.RegisterOption("yagpdb.robloxapikey", "the roblox api key used to manage and make requests", nil)

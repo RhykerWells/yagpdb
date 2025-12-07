@@ -35,6 +35,7 @@ type GuildLoggingConfig struct {
 	EveryoneCanViewDeleted       null.Bool        `boil:"everyone_can_view_deleted" json:"everyone_can_view_deleted,omitempty" toml:"everyone_can_view_deleted" yaml:"everyone_can_view_deleted,omitempty"`
 	MessageLogsAllowedRoles      types.Int64Array `boil:"message_logs_allowed_roles" json:"message_logs_allowed_roles,omitempty" toml:"message_logs_allowed_roles" yaml:"message_logs_allowed_roles,omitempty"`
 	AccessMode                   int16            `boil:"access_mode" json:"access_mode" toml:"access_mode" yaml:"access_mode"`
+	ChannelsWhitelistMode        bool             `boil:"channels_whitelist_mode" json:"channels_whitelist_mode" toml:"channels_whitelist_mode" yaml:"channels_whitelist_mode"`
 
 	R *guildLoggingConfigR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L guildLoggingConfigL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +52,7 @@ var GuildLoggingConfigColumns = struct {
 	EveryoneCanViewDeleted       string
 	MessageLogsAllowedRoles      string
 	AccessMode                   string
+	ChannelsWhitelistMode        string
 }{
 	GuildID:                      "guild_id",
 	CreatedAt:                    "created_at",
@@ -62,6 +64,7 @@ var GuildLoggingConfigColumns = struct {
 	EveryoneCanViewDeleted:       "everyone_can_view_deleted",
 	MessageLogsAllowedRoles:      "message_logs_allowed_roles",
 	AccessMode:                   "access_mode",
+	ChannelsWhitelistMode:        "channels_whitelist_mode",
 }
 
 var GuildLoggingConfigTableColumns = struct {
@@ -75,6 +78,7 @@ var GuildLoggingConfigTableColumns = struct {
 	EveryoneCanViewDeleted       string
 	MessageLogsAllowedRoles      string
 	AccessMode                   string
+	ChannelsWhitelistMode        string
 }{
 	GuildID:                      "guild_logging_configs.guild_id",
 	CreatedAt:                    "guild_logging_configs.created_at",
@@ -86,6 +90,7 @@ var GuildLoggingConfigTableColumns = struct {
 	EveryoneCanViewDeleted:       "guild_logging_configs.everyone_can_view_deleted",
 	MessageLogsAllowedRoles:      "guild_logging_configs.message_logs_allowed_roles",
 	AccessMode:                   "guild_logging_configs.access_mode",
+	ChannelsWhitelistMode:        "guild_logging_configs.channels_whitelist_mode",
 }
 
 // Generated where
@@ -264,6 +269,15 @@ func (w whereHelperint16) NIN(slice []int16) qm.QueryMod {
 	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
 }
 
+type whereHelperbool struct{ field string }
+
+func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+
 var GuildLoggingConfigWhere = struct {
 	GuildID                      whereHelperint64
 	CreatedAt                    whereHelpernull_Time
@@ -275,6 +289,7 @@ var GuildLoggingConfigWhere = struct {
 	EveryoneCanViewDeleted       whereHelpernull_Bool
 	MessageLogsAllowedRoles      whereHelpertypes_Int64Array
 	AccessMode                   whereHelperint16
+	ChannelsWhitelistMode        whereHelperbool
 }{
 	GuildID:                      whereHelperint64{field: "\"guild_logging_configs\".\"guild_id\""},
 	CreatedAt:                    whereHelpernull_Time{field: "\"guild_logging_configs\".\"created_at\""},
@@ -286,6 +301,7 @@ var GuildLoggingConfigWhere = struct {
 	EveryoneCanViewDeleted:       whereHelpernull_Bool{field: "\"guild_logging_configs\".\"everyone_can_view_deleted\""},
 	MessageLogsAllowedRoles:      whereHelpertypes_Int64Array{field: "\"guild_logging_configs\".\"message_logs_allowed_roles\""},
 	AccessMode:                   whereHelperint16{field: "\"guild_logging_configs\".\"access_mode\""},
+	ChannelsWhitelistMode:        whereHelperbool{field: "\"guild_logging_configs\".\"channels_whitelist_mode\""},
 }
 
 // GuildLoggingConfigRels is where relationship names are stored.
@@ -305,9 +321,9 @@ func (*guildLoggingConfigR) NewStruct() *guildLoggingConfigR {
 type guildLoggingConfigL struct{}
 
 var (
-	guildLoggingConfigAllColumns            = []string{"guild_id", "created_at", "updated_at", "username_logging_enabled", "nickname_logging_enabled", "blacklisted_channels", "manage_messages_can_view_deleted", "everyone_can_view_deleted", "message_logs_allowed_roles", "access_mode"}
+	guildLoggingConfigAllColumns            = []string{"guild_id", "created_at", "updated_at", "username_logging_enabled", "nickname_logging_enabled", "blacklisted_channels", "manage_messages_can_view_deleted", "everyone_can_view_deleted", "message_logs_allowed_roles", "access_mode", "channels_whitelist_mode"}
 	guildLoggingConfigColumnsWithoutDefault = []string{"guild_id"}
-	guildLoggingConfigColumnsWithDefault    = []string{"created_at", "updated_at", "username_logging_enabled", "nickname_logging_enabled", "blacklisted_channels", "manage_messages_can_view_deleted", "everyone_can_view_deleted", "message_logs_allowed_roles", "access_mode"}
+	guildLoggingConfigColumnsWithDefault    = []string{"created_at", "updated_at", "username_logging_enabled", "nickname_logging_enabled", "blacklisted_channels", "manage_messages_can_view_deleted", "everyone_can_view_deleted", "message_logs_allowed_roles", "access_mode", "channels_whitelist_mode"}
 	guildLoggingConfigPrimaryKeyColumns     = []string{"guild_id"}
 	guildLoggingConfigGeneratedColumns      = []string{}
 )

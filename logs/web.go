@@ -53,6 +53,7 @@ type ConfigFormData struct {
 	AccessMode                   int
 	BlacklistedChannels          []string
 	MessageLogsAllowedRoles      []int64
+	ChannelsWhitelistMode        bool `json:"channels_whitelist_mode" schema:"channels_whitelist_mode"`
 }
 
 var (
@@ -180,6 +181,7 @@ func HandleLogsCPSaveGeneral(w http.ResponseWriter, r *http.Request) (web.Templa
 		ManageMessagesCanViewDeleted: null.BoolFrom(form.ManageMessagesCanViewDeleted),
 		MessageLogsAllowedRoles:      form.MessageLogsAllowedRoles,
 		AccessMode:                   int16(form.AccessMode),
+		ChannelsWhitelistMode:        form.ChannelsWhitelistMode,
 	}
 
 	err := config.UpsertG(ctx, true, []string{"guild_id"}, boil.Infer(), boil.Infer())
@@ -239,7 +241,7 @@ func CheckCanAccessLogs(w http.ResponseWriter, r *http.Request, config *models.G
 	member := web.ContextMember(ctx)
 	if member == nil {
 		goTo := url.QueryEscape(r.RequestURI)
-		alertLink := fmt.Sprintf(`<a href="%s/login?goto=%s">log in with Discord</a>`, web.BaseURL(), goTo)
+		alertLink := fmt.Sprintf(`<a href="%s/login?goto=%s">Login with Discord</a>`, web.BaseURL(), goTo)
 		alertMsg := fmt.Sprintf("This server has restricted log access to members only. Please %s to view this log.", alertLink)
 
 		tmpl.AddAlerts(web.ErrorAlert(alertMsg))

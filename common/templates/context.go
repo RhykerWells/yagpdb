@@ -26,13 +26,17 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/web/discorddata"
 	"github.com/sirupsen/logrus"
 	"github.com/vmihailenco/msgpack"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
-	StandardFuncMap = map[string]interface{}{
+	titleCaser = cases.Title(language.Und)
+
+	StandardFuncMap = map[string]any{
 		// conversion functions
 		"str":        ToString,
-		"toString":   ToString, // don't ask why we have 2 of these
+		"toString":   ToString, // don't ask why we have 2 of these, update: the answer is always "deprecated but not removed"
 		"toInt":      tmplToInt,
 		"toInt64":    ToInt64,
 		"toFloat":    ToFloat64,
@@ -47,7 +51,7 @@ var (
 		"lower":        strings.ToLower,
 		"slice":        slice,
 		"split":        strings.Split,
-		"title":        strings.Title,
+		"title":        titleCaser.String,
 		"trimSpace":    strings.TrimSpace,
 		"upper":        strings.ToUpper,
 		"urlescape":    url.PathEscape,
@@ -89,20 +93,30 @@ var (
 		"bitwiseLeftShift":  tmplBitwiseLeftShift,
 		"bitwiseRightShift": tmplBitwiseRightShift,
 
-		// misc
-		"humanizeThousands":  tmplHumanizeThousands,
-		"dict":               Dictionary,
-		"sdict":              StringKeyDictionary,
-		"structToSdict":      StructToSdict,
-		"componentBuilder":   CreateComponentBuilder,
+		// message component builders
+		"componentBuilder": CreateComponentBuilder,
+		"modalBuilder":     CreateModalBuilder,
+		"cbutton":          CreateButton,
+		"cmenu":            CreateSelectMenu,
+		"cmodal":           CreateModal,
+		"clabel":           CreateLabel,
+		"ctextInput":       CreateTextInput,
+		"ctextDisplay":     CreateTextDisplay,
+
+		// message builders
 		"cembed":             CreateEmbed,
-		"cbutton":            CreateButton,
-		"cmenu":              CreateSelectMenu,
-		"cmodal":             CreateModal,
-		"cslice":             CreateSlice,
 		"complexMessage":     CreateMessageSend,
 		"complexMessageEdit": CreateMessageEdit,
-		"kindOf":             KindOf,
+
+		// misc
+		"humanizeThousands": tmplHumanizeThousands,
+		"dict":              Dictionary,
+		"sdict":             StringKeyDictionary,
+		"structToSdict":     StructToSdict,
+
+		"cslice": CreateSlice,
+
+		"kindOf": KindOf,
 
 		"adjective":   common.RandomAdjective,
 		"in":          in,
@@ -328,6 +342,7 @@ const (
 	MaxOpsPremium     = 2500000
 	MaxOpsEvalNormal  = 200000
 	MaxOpsEvalPremium = 500000
+	MaxSliceLength    = 10000
 )
 
 func (c *Context) Execute(source string) (string, error) {
@@ -511,18 +526,7 @@ func (c *Context) SendResponse(content string) (m *discordgo.Message, err error)
 	}
 	if sendType == sendMessageDM {
 		msgSend.Content = common.ReplaceServerInvites(msgSend.Content, 0, "[removed-server-invite]")
-		msgSend.Components = []discordgo.TopLevelComponent{
-			discordgo.ActionsRow{
-				Components: []discordgo.InteractiveComponent{
-					discordgo.Button{
-						Label:    "Show Server Info",
-						Style:    discordgo.PrimaryButton,
-						Emoji:    &discordgo.ComponentEmoji{Name: "📬"},
-						CustomID: fmt.Sprintf("DM_%d", c.GS.ID),
-					},
-				},
-			},
-		}
+		msgSend.Components = bot.GenerateServerInfoButton(c.GS.ID)
 	}
 
 	if c.CurrentFrame.EphemeralResponse {
@@ -673,8 +677,6 @@ func baseContextFuncs(c *Context) {
 	c.addContextFunc("deleteResponse", c.tmplDelResponse)
 	c.addContextFunc("deleteTrigger", c.tmplDelTrigger)
 
-	c.addContextFunc("editComponentMessage", c.tmplEditComponentsMessage(true))
-	c.addContextFunc("editComponentMessageNoEscape", c.tmplEditComponentsMessage(false))
 	c.addContextFunc("editMessage", c.tmplEditMessage(true))
 	c.addContextFunc("editMessageNoEscape", c.tmplEditMessage(false))
 	c.addContextFunc("getMessage", c.tmplGetMessage)
@@ -685,11 +687,15 @@ func baseContextFuncs(c *Context) {
 
 	// Message send functions
 	c.addContextFunc("sendDM", c.tmplSendDM)
+
+	//TODO: Remove these component functions
 	c.addContextFunc("sendComponentMessageRetID", c.tmplSendComponentsMessage(true, true))
 	c.addContextFunc("sendComponentMessage", c.tmplSendComponentsMessage(true, false))
 	c.addContextFunc("sendComponentMessageNoEscape", c.tmplSendComponentsMessage(false, false))
 	c.addContextFunc("sendComponentMessageNoEscapeRetID", c.tmplSendComponentsMessage(false, true))
-	c.addContextFunc("sendComponentMessageRetID", c.tmplSendComponentsMessage(true, true))
+	c.addContextFunc("editComponentMessage", c.tmplEditComponentsMessage(true))
+	c.addContextFunc("editComponentMessageNoEscape", c.tmplEditComponentsMessage(false))
+
 	c.addContextFunc("sendMessage", c.tmplSendMessage(true, false))
 	c.addContextFunc("sendMessageNoEscape", c.tmplSendMessage(false, false))
 	c.addContextFunc("sendMessageNoEscapeRetID", c.tmplSendMessage(false, true))
@@ -1033,7 +1039,7 @@ func (d Dict) MarshalJSON() ([]byte, error) {
 	return json.Marshal(md)
 }
 
-type SDict map[string]interface{}
+type SDict map[string]any
 
 func (d SDict) Set(key string, value interface{}) (string, error) {
 	d[key] = value
@@ -1062,18 +1068,23 @@ func (d SDict) HasKey(k string) (ok bool) {
 type Slice []interface{}
 
 func (s Slice) Append(item interface{}) (interface{}, error) {
-	if len(s)+1 > 10000 {
+	if len(s)+1 > MaxSliceLength {
 		return nil, errors.New("resulting slice exceeds slice size limit")
 	}
 
-	switch v := item.(type) {
-	case nil:
-		result := reflect.Append(reflect.ValueOf(&s).Elem(), reflect.Zero(reflect.TypeOf((*interface{})(nil)).Elem()))
-		return result.Interface(), nil
-	default:
-		result := reflect.Append(reflect.ValueOf(&s).Elem(), reflect.ValueOf(v))
-		return result.Interface(), nil
+	var result reflect.Value
+	if item == nil {
+		result = reflect.Append(reflect.ValueOf(&s).Elem(), reflect.Zero(reflect.TypeOf((*interface{})(nil)).Elem()))
+	} else {
+		result = reflect.Append(reflect.ValueOf(&s).Elem(), reflect.ValueOf(item))
 	}
+
+	if isContainer(item) {
+		if err := detectCyclicValue(result.Interface()); err != nil {
+			return "", template.UncatchableError(err)
+		}
+	}
+	return result.Interface(), nil
 }
 
 func (s Slice) Set(index int, item interface{}) (string, error) {
@@ -1095,26 +1106,32 @@ func (s Slice) AppendSlice(slice interface{}) (interface{}, error) {
 	switch val.Kind() {
 	case reflect.Slice, reflect.Array:
 	// this is valid
-
 	default:
 		return nil, errors.New("value passed is not an array or slice")
 	}
 
-	if len(s)+val.Len() > 10000 {
+	if len(s)+val.Len() > MaxSliceLength {
 		return nil, errors.New("resulting slice exceeds slice size limit")
 	}
 
 	result := reflect.ValueOf(&s).Elem()
+	containsContainer := false
 	for i := 0; i < val.Len(); i++ {
-		switch v := val.Index(i).Interface().(type) {
-		case nil:
+		elem := val.Index(i).Interface()
+		if elem == nil {
 			result = reflect.Append(result, reflect.Zero(reflect.TypeOf((*interface{})(nil)).Elem()))
-
-		default:
-			result = reflect.Append(result, reflect.ValueOf(v))
+		} else {
+			result = reflect.Append(result, reflect.ValueOf(elem))
+			if !containsContainer && isContainer(elem) {
+				containsContainer = true
+			}
 		}
 	}
-
+	if containsContainer {
+		if err := detectCyclicValue(result.Interface()); err != nil {
+			return "", template.UncatchableError(err)
+		}
+	}
 	return result.Interface(), nil
 }
 
@@ -1147,18 +1164,107 @@ func (s Slice) StringSlice(flag ...bool) interface{} {
 	return StringSlice
 }
 
-type ComponentBuilder struct {
-	Components []string
-	Values     []interface{}
+type ModalBuilder struct {
+	Title      string
+	CustomID   string
+	Components []discordgo.TopLevelComponent
 }
 
-func (s *ComponentBuilder) Add(key string, value interface{}) (interface{}, error) {
-	if len(s.Components)+1 > 10000 {
+func (s *ModalBuilder) Set(key string, value any) (*ModalBuilder, error) {
+	switch key {
+	case "title":
+		s.Title = ToString(value)
+	case "custom_id":
+		cID, err := validateCustomID(ToString(value), nil)
+		if err != nil {
+			return nil, err
+		}
+		s.CustomID = cID
+	case "components":
+		val, _ := indirect(reflect.ValueOf(value))
+		s.Components = make([]discordgo.TopLevelComponent, 0)
+		if val.Kind() == reflect.Slice {
+			for i := 0; i < val.Len(); i++ {
+				_, err := s.addComponent(val.Index(i).Interface())
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			return nil, errors.New("components must be a slice of Labels or TextFields")
+		}
+	default:
+		return nil, errors.New("invalid key, accepted keys are: title, custom_id, components")
+	}
+	return s, nil
+}
+
+func (s *ModalBuilder) addComponent(comp any) (*ModalBuilder, error) {
+	if len(s.Components) == 5 {
+		return nil, errors.New("modal builder can only have maximum 5 top level components")
+	}
+
+	if comp, ok := comp.(discordgo.TopLevelComponent); ok {
+		if !comp.IsModalSupported() {
+			return nil, errors.New("invalid top level component passed to modal builder")
+		}
+		s.Components = append(s.Components, comp)
+	} else {
+		return nil, errors.New("invalid top level component passed to modal builder")
+	}
+
+	return s, nil
+}
+
+func (s *ModalBuilder) AddComponents(comps ...any) (*ModalBuilder, error) {
+	for _, comp := range comps {
+		val, _ := indirect(reflect.ValueOf(comp))
+		if val.Kind() == reflect.Slice {
+			for i := 0; i < val.Len(); i++ {
+				_, err := s.addComponent(val.Index(i).Interface())
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			_, err := s.addComponent(comp)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return s, nil
+}
+
+func (s *ModalBuilder) toModal() (*discordgo.InteractionResponse, error) {
+	return &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseModal,
+		Data: &discordgo.InteractionResponseData{
+			Title:      s.Title,
+			CustomID:   s.CustomID,
+			Components: s.Components,
+		},
+	}, nil
+}
+
+type ComponentBuilder struct {
+	Components []string
+	Values     []any
+}
+
+func (s *ComponentBuilder) Add(key string, value any) (interface{}, error) {
+	if len(s.Components)+1 > MaxSliceLength {
 		return nil, errors.New("resulting slice exceeds slice size limit")
 	}
 
 	s.Components = append(s.Components, key)
 	s.Values = append(s.Values, value)
+
+	if isContainer(value) {
+		if err := detectCyclicValue(s.Values); err != nil {
+			return "", template.UncatchableError(err)
+		}
+	}
 	return "", nil
 }
 
@@ -1172,33 +1278,51 @@ func (s *ComponentBuilder) AddSlice(key string, slice interface{}) (interface{},
 		return nil, errors.New("value passed is not an array or slice")
 	}
 
-	if len(s.Components)+val.Len() > 10000 {
+	if len(s.Components)+val.Len() > MaxSliceLength {
 		return nil, errors.New("resulting slice exceeds slice size limit")
 	}
 
 	result := reflect.ValueOf(&s.Values).Elem()
+	containsContainer := false
 	for i := 0; i < val.Len(); i++ {
 		s.Components = append(s.Components, key)
-		switch v := val.Index(i).Interface().(type) {
-		case nil:
+		elem := val.Index(i).Interface()
+		if elem == nil {
 			result = reflect.Append(result, reflect.Zero(reflect.TypeOf((*interface{})(nil)).Elem()))
-
-		default:
-			result = reflect.Append(result, reflect.ValueOf(v))
+		} else {
+			result = reflect.Append(result, reflect.ValueOf(elem))
+			if !containsContainer && isContainer(elem) {
+				containsContainer = true
+			}
 		}
 	}
 	s.Values = result.Interface().([]interface{})
+
+	if containsContainer {
+		if err := detectCyclicValue(s.Values); err != nil {
+			return "", template.UncatchableError(err)
+		}
+	}
 
 	return "", nil
 }
 
 func (s *ComponentBuilder) Merge(toMerge *ComponentBuilder) (interface{}, error) {
-	if len(s.Components)+len(toMerge.Components) > 10000 {
+	if len(s.Components)+len(toMerge.Components) > MaxSliceLength {
 		return nil, errors.New("resulting slice exceeds slice size limit")
 	}
 
+	containsContainer := false
 	for i, k := range toMerge.Components {
 		s.Add(k, toMerge.Values[i])
+		if !containsContainer && isContainer(toMerge.Values[i]) {
+			containsContainer = true
+		}
+	}
+	if containsContainer {
+		if err := detectCyclicValue(s.Values); err != nil {
+			return "", template.UncatchableError(err)
+		}
 	}
 
 	return "", nil
@@ -1211,6 +1335,133 @@ func (s *ComponentBuilder) Get(key string) (result []interface{}) {
 		}
 	}
 	return
+}
+
+func (s *ComponentBuilder) ToComplexMessage() (*discordgo.MessageSend, error) {
+	msg := &discordgo.MessageSend{
+		AllowedMentions: discordgo.AllowedMentions{
+			Parse: []discordgo.AllowedMentionType{discordgo.AllowedMentionTypeUsers},
+		},
+		Flags: discordgo.MessageFlagsIsComponentsV2,
+	}
+
+	componentArgs := &ComponentBuilder{}
+	for i, key := range s.Components {
+		val := s.Values[i]
+
+		switch strings.ToLower(key) {
+		case "allowed_mentions":
+			if val == nil {
+				msg.AllowedMentions = discordgo.AllowedMentions{}
+				continue
+			}
+			parsed, err := parseAllowedMentions(val)
+			if err != nil {
+				return nil, err
+			}
+			msg.AllowedMentions = *parsed
+		case "reply":
+			msgID := ToInt64(val)
+			if msgID <= 0 {
+				return nil, errors.New(fmt.Sprintf("invalid message id '%s' provided to reply.", ToString(val)))
+			}
+			msg.Reference = &discordgo.MessageReference{
+				MessageID: msgID,
+			}
+		case "silent":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsSuppressNotifications
+		case "ephemeral":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsEphemeral
+		case "suppress_embeds":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsSuppressEmbeds
+		default:
+			componentArgs.Add(key, val)
+		}
+	}
+
+	if len(componentArgs.Components) > 0 {
+		components, err := CreateComponentArray(&msg.Files, componentArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		err = validateTopLevelComponentsCustomIDs(components, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		msg.Components = components
+	}
+	return msg, nil
+}
+
+func (s *ComponentBuilder) ToComplexMessageEdit() (*discordgo.MessageEdit, error) {
+	empty := ""
+	msg := &discordgo.MessageEdit{
+		AllowedMentions: discordgo.AllowedMentions{Parse: []discordgo.AllowedMentionType{discordgo.AllowedMentionTypeUsers}},
+		Flags:           discordgo.MessageFlagsIsComponentsV2,
+		Content:         &empty,
+		Embeds:          []*discordgo.MessageEmbed{},
+	}
+
+	componentArgs := &ComponentBuilder{}
+	for i, key := range s.Components {
+		val := s.Values[i]
+
+		switch strings.ToLower(key) {
+		case "allowed_mentions":
+			if val == nil {
+				msg.AllowedMentions = discordgo.AllowedMentions{}
+				continue
+			}
+			parsed, err := parseAllowedMentions(val)
+			if err != nil {
+				return nil, err
+			}
+			msg.AllowedMentions = *parsed
+		case "silent":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsSuppressNotifications
+		case "ephemeral":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsEphemeral
+		case "suppress_embeds":
+			if val == nil || val == false {
+				continue
+			}
+			msg.Flags |= discordgo.MessageFlagsSuppressEmbeds
+		default:
+			componentArgs.Add(key, val)
+		}
+	}
+
+	if len(componentArgs.Components) > 0 {
+		components, err := CreateComponentArray(nil, componentArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		err = validateTopLevelComponentsCustomIDs(components, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		msg.Components = components
+	}
+	return msg, nil
 }
 
 func withOutputLimit(f func(...interface{}) string, limit int) func(...interface{}) (string, error) {

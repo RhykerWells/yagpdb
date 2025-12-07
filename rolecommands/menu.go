@@ -530,7 +530,18 @@ func handleReactionAddRemove(evt *eventsystem.EventData) {
 	}
 
 	if resp != "" {
-		bot.SendDM(uID, "**"+gs.Name+"**: "+resp)
+		msgSend := &discordgo.MessageSend{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Description: resp,
+					Footer: &discordgo.MessageEmbedFooter{
+						Text: fmt.Sprint("From: **" + gs.Name + "**: "),
+					},
+				},
+			},
+			Components: bot.GenerateServerInfoButton(gs.ID),
+		}
+		bot.SendDMComplexMessage(uID, msgSend)
 	}
 }
 

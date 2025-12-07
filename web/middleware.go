@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"emperror.dev/errors"
@@ -158,8 +159,17 @@ func RequireSessionMiddleware(inner http.Handler) http.Handler {
 			split := strings.SplitN(origin, ":", 3)
 			hostSplit := strings.SplitN(common.ConfHost.GetString(), ":", 2)
 
-			if len(split) < 2 || !strings.EqualFold("//"+hostSplit[0], split[1]) {
-				CtxLogger(r.Context()).Error("Mismatched origin: ", hostSplit[0]+" : "+split[1])
+			expectedHost := ""
+			if len(hostSplit) > 0 {
+				expectedHost = "//" + hostSplit[0]
+			}
+			originHost := ""
+			if len(split) > 1 {
+				originHost = split[1]
+			}
+
+			if originHost == "" || !strings.EqualFold(expectedHost, originHost) {
+				CtxLogger(r.Context()).Error("Mismatched origin: ", expectedHost+" : "+originHost)
 				WriteErrorResponse(w, r, "Bad origin", http.StatusUnauthorized)
 				return
 			}
@@ -179,8 +189,17 @@ func CSRFProtectionMW(inner http.Handler) http.Handler {
 			split := strings.SplitN(origin, ":", 3)
 			hostSplit := strings.SplitN(common.ConfHost.GetString(), ":", 2)
 
-			if len(split) < 2 || !strings.EqualFold("//"+hostSplit[0], split[1]) {
-				CtxLogger(r.Context()).Error("Mismatched origin: ", hostSplit[0]+" : "+split[1])
+			expectedHost := ""
+			if len(hostSplit) > 0 {
+				expectedHost = "//" + hostSplit[0]
+			}
+			originHost := ""
+			if len(split) > 1 {
+				originHost = split[1]
+			}
+
+			if originHost == "" || !strings.EqualFold(expectedHost, originHost) {
+				CtxLogger(r.Context()).Error("Mismatched origin: ", expectedHost+" : "+originHost)
 				WriteErrorResponse(w, r, "Bad origin", http.StatusUnauthorized)
 				return
 			}
@@ -336,6 +355,39 @@ func RequireServerAdminMiddleware(inner http.Handler) http.Handler {
 		inner.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(mw)
+}
+
+var guildPathMutexes sync.Map
+
+// Prevents Race Conditions on POST and PUT endpoints.
+func GuildPathMutexMiddleware(inner http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method := strings.ToUpper(r.Method)
+		if method != "POST" && method != "PUT" {
+			inner.ServeHTTP(w, r)
+			return
+		}
+
+		guildInterface := r.Context().Value(common.ContextKeyCurrentGuild)
+		if guildInterface == nil {
+			// No guild in context, pass through
+			inner.ServeHTTP(w, r)
+			return
+		}
+
+		guild := guildInterface.(*dstate.GuildSet)
+		guildID := guild.ID
+
+		mutexKey := fmt.Sprintf("%d:%s", guildID, r.URL.Path)
+
+		mutexInterface, _ := guildPathMutexes.LoadOrStore(mutexKey, &sync.Mutex{})
+		mutex := mutexInterface.(*sync.Mutex)
+
+		mutex.Lock()
+		defer mutex.Unlock()
+
+		inner.ServeHTTP(w, r)
+	})
 }
 
 // RequireBotMemberMW ensures that the bot member for the curreng guild is available, mostly used for checking the bot's roles
@@ -774,7 +826,7 @@ func SetGuildMemberMiddleware(inner http.Handler) http.Handler {
 			m, err := discorddata.GetMember(guild.ID, user.ID)
 			if err != nil || m == nil {
 				CtxLogger(r.Context()).WithError(err).Warn("failed retrieving member info from discord api")
-			} else if m != nil {
+			} else {
 				// calculate permissions
 				perms := dstate.CalculatePermissions(&guild.GuildState, guild.Roles, nil, m.User.ID, m.Roles)
 

@@ -12,7 +12,7 @@ networks:
 services:
   app:
     container_name: veilbot-app
-    image: RhykerWells/yagpdb-iota
+    image: RhykerWells/yagpdb-iota:upstream
     build:
       context: ../
       dockerfile: yagpdb_docker/Dockerfile
@@ -33,7 +33,6 @@ services:
       - soundboard:/app/soundboard
     ports:
       - '8086:80'
-      - '9998:443'
     env_file:
       - app.iota.env
 
