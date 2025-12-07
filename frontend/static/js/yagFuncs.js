@@ -209,4 +209,9 @@ var yagFuncs = {
   dbBottomEntries: true,
   dbCount: true,
   dbRank: true,
+  ctextInput: true,
+  ctextDisplay: true,
+  clabel: true,
+  componentBuilder: true,
+  modalBuilder: true,
 };
