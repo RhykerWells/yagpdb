@@ -101,6 +101,12 @@ func PermissionName(p int64) string {
 		return "AddReactions"
 	case PermissionViewAuditLog:
 		return "ViewAuditLog"
+	case PermissionUseExternalApps:
+		return "UseExternalApps"
+	case PermissionPinMessages:
+		return "PinMessages"
+	case PermissionBypassSlowmode:
+		return "BypassSlowmode"
 	default:
 		return "UnknownPermission(" + strconv.FormatInt(p, 10) + ")"
 	}

@@ -1394,6 +1394,32 @@ func (c *Context) overwriteThreadInGuildSet(t *dstate.ChannelState) {
 	c.GS = &gsCopy
 }
 
+func (c *Context) addChannelToGuildSet(t *dstate.ChannelState) {
+	// Perform a copy so we don't mutate global array
+	gsCopy := *c.GS
+	gsCopy.Channels = make([]dstate.ChannelState, len(c.GS.Channels), len(c.GS.Channels)+1)
+	copy(gsCopy.Channels, c.GS.Channels)
+
+	// Add new channel to copied guild state
+	gsCopy.Channels = append(gsCopy.Channels, *t)
+	c.GS = &gsCopy
+}
+
+func (c *Context) addRoleToGuildSet(r *discordgo.Role) {
+	if c.GS == nil || r == nil {
+		return
+	}
+
+	// Perform a copy so we don't mutate global array
+	gsCopy := *c.GS
+	gsCopy.Roles = make([]discordgo.Role, len(c.GS.Roles), len(c.GS.Roles)+1)
+	copy(gsCopy.Roles, c.GS.Roles)
+
+	// Add new role to copied guild state
+	gsCopy.Roles = append(gsCopy.Roles, *r)
+	c.GS = &gsCopy
+}
+
 // This function can delete both basic threads and forum threads
 func (c *Context) tmplDeleteThread(thread interface{}) (string, error) {
 	if c.IncreaseCheckCallCounterPremium("delete_thread", 1, 1) {
@@ -1527,6 +1553,102 @@ func (c *Context) tmplThreadMemberRemove(threadID, memberID interface{}) string 
 
 	common.BotSession.ThreadMemberRemove(tID, discordgo.StrID(targetID))
 	return ""
+}
+
+func (c *Context) tmplCreateRole(options interface{}) (*discordgo.Role, error) {
+	roleCreate, err := CreateRole(options)
+	if err != nil {
+		return nil, err
+	}
+
+	role, err := common.BotSession.GuildRoleCreateComplex(c.GS.ID, *roleCreate)
+	if err != nil {
+		return nil, err
+	}
+	c.addRoleToGuildSet(role)
+
+	return role, nil
+}
+
+func (c *Context) tmplCreateChannel(name, channelType, parent, overwrites interface{}) (*CtxChannel, error) {
+	var chType discordgo.ChannelType
+	switch ToString(channelType) {
+	case "category":
+		chType = discordgo.ChannelTypeGuildCategory
+	case "text":
+		chType = discordgo.ChannelTypeGuildText
+	default:
+		return nil, fmt.Errorf("invalid channel type: %v", channelType)
+	}
+
+	data := discordgo.GuildChannelCreateData{
+		Name: ToString(name),
+		Type: chType,
+	}
+
+	// only apply parent for non-category channels
+	if chType == discordgo.ChannelTypeGuildText {
+		data.ParentID = ToString(parent)
+	}
+
+	// overwrites
+	if overwrites != nil {
+		parsedOverwrites, err := processOverwriteArgs(overwrites)
+		if err != nil {
+			return nil, err
+		}
+		data.PermissionOverwrites = parsedOverwrites
+	}
+
+	channel, err := common.BotSession.GuildChannelCreateComplex(c.GS.ID, data)
+	if err != nil {
+		return nil, err
+	}
+
+	cstate := dstate.ChannelStateFromDgo(channel)
+	// Add the newly created channel to the guild state so subsequent
+	// template calls (in nested execCC runs) can find it via getChannel
+	c.addChannelToGuildSet(&cstate)
+
+	return CtxChannelFromCS(&cstate), nil
+}
+
+func processOverwriteArgs(values ...interface{}) ([]*discordgo.PermissionOverwrite, error) {
+	var c []*discordgo.PermissionOverwrite
+
+	if len(values) == 0 {
+		return c, nil
+	}
+
+	overwrites, err := StringKeyDictionary(values...)
+	if err != nil {
+		return c, err
+	}
+
+	for roleID, rawPermSet := range overwrites {
+		permSet, err := StringKeyDictionary(rawPermSet)
+		if err != nil {
+			return c, err
+		}
+
+		c = append(c, &discordgo.PermissionOverwrite{
+			ID:   ToInt64(roleID),
+			Type: discordgo.PermissionOverwriteTypeRole,
+			Allow: func() int64 {
+				if allow, ok := permSet["Allow"]; ok {
+					return ToInt64(allow)
+				}
+				return 0
+			}(),
+			Deny: func() int64 {
+				if deny, ok := permSet["Deny"]; ok {
+					return ToInt64(deny)
+				}
+				return 0
+			}(),
+		})
+	}
+	return c, nil
 }
 
 func (c *Context) tmplCreateForumPost(channel, name, content interface{}, optional ...interface{}) (*CtxChannel, error) {

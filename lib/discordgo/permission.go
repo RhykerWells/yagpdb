@@ -49,6 +49,9 @@ const (
 	PermissionUseExternalSounds                int64 = 1 << 45 // Allows the usage of custom soundboard sounds from other servers 	V
 	PermissionSendVoiceMessages                int64 = 1 << 46 // Allows sending voice messages 	T, V, S
 	PermissionSendPolls                        int64 = 1 << 49 // Allows sending polls 	T, V, S
+	PermissionUseExternalApps				   int64 = 1 << 50 // Allows user-installed apps to send public responses. When disabled, users will still be allowed to use their apps but the responses will be ephemeral. This only applies to apps not also installed to the server.
+	PermissionPinMessages					   int64 = 1 << 51 // Allows pinning and unpinning messages
+	PermissionBypassSlowmode				   int64 = 1 << 52 // Allows bypassing slowmode restrictions
 )
 
 // all bits set except the leftmost to avoid using negative numbers in case discord doesn't handle it
@@ -77,6 +80,7 @@ var AllPermissions = []int64{
 	PermissionUseExternalSounds,
 	PermissionSendVoiceMessages,
 	PermissionSendPolls,
+	PermissionUseExternalApps,
 
 	PermissionVoiceConnect,
 	PermissionVoiceSpeak,
@@ -107,6 +111,8 @@ var AllPermissions = []int64{
 	PermissionUsePublicThreads,
 	PermissionUsePrivateThreads,
 	PermissionSendMessagesInThreads,
+	PermissionPinMessages,
+	PermissionBypassSlowmode,
 
 	PermissionAddReactions,
 	PermissionViewAuditLog,

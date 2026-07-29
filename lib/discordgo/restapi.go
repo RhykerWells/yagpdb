@@ -1107,6 +1107,33 @@ func (s *Session) GuildChannelCreateWithOverwrites(guildID int64, name string, c
 	return
 }
 
+// GuildChannelCreateData is provided to GuildChannelCreateComplex
+type GuildChannelCreateData struct {
+	Name                 string                 `json:"name"`
+	Type                 ChannelType            `json:"type"`
+	Topic                string                 `json:"topic,omitempty"`
+	Bitrate              int                    `json:"bitrate,omitempty"`
+	UserLimit            int                    `json:"user_limit,omitempty"`
+	RateLimitPerUser     int                    `json:"rate_limit_per_user,omitempty"`
+	Position             int                    `json:"position,omitempty"`
+	PermissionOverwrites []*PermissionOverwrite `json:"permission_overwrites,omitempty"`
+	ParentID             string                  `json:"parent_id,omitempty"`
+	NSFW                 bool                   `json:"nsfw,omitempty"`
+}
+
+// GuildChannelCreateComplex creates a new channel in the given guild
+// guildID      : The ID of a Guild
+// data         : A data struct describing the new Channel, Name and Type are mandatory, other fields depending on the type
+func (s *Session) GuildChannelCreateComplex(guildID int64, data GuildChannelCreateData) (st *Channel, err error) {
+	body, err := s.RequestWithBucketID("POST", EndpointGuildChannels(guildID), data, nil, EndpointGuildChannels(guildID))
+	if err != nil {
+		return
+	}
+
+	err = unmarshal(body, &st)
+	return
+}
+
 // GuildChannelsReorder updates the order of channels in a guild
 // guildID   : The ID of a Guild.
 // channels  : Updated channels.

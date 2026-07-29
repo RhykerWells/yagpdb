@@ -260,6 +260,41 @@ func CreateEmbed(values ...interface{}) (*discordgo.MessageEmbed, error) {
 	return embed, nil
 }
 
+func CreateRole(values ...interface{}) (*discordgo.RoleCreate, error) {
+	if len(values) < 1 {
+		return &discordgo.RoleCreate{}, nil
+}
+
+	var m map[string]interface{}
+	switch t := values[0].(type) {
+	case SDict:
+		m = t
+	case *SDict:
+		m = *t
+	case map[string]interface{}:
+		m = t
+	default:
+		dict, err := StringKeyDictionary(values...)
+		if err != nil {
+			return nil, err
+		}
+		m = dict
+	}
+
+	encoded, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+
+	var role *discordgo.RoleCreate
+	err = json.Unmarshal(encoded, &role)
+	if err != nil {
+		return nil, err
+	}
+
+	return role, nil
+}
+
 func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
 	if len(values) < 1 {
 		return &discordgo.MessageSend{}, nil

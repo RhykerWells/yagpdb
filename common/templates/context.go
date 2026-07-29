@@ -311,6 +311,7 @@ func (c *Context) setupBaseData() {
 	for _, p := range discordgo.AllPermissions {
 		permNameToBit[discordgo.PermissionName(p)] = p
 	}
+	permNameToBit["PermissionAll"] = discordgo.PermissionAll
 
 	// for backward compatibility with previous versions
 	permNameToBit["ReadMessages"] = discordgo.PermissionViewChannel
@@ -722,6 +723,7 @@ func baseContextFuncs(c *Context) {
 	c.addContextFunc("mentionRoleID", c.tmplMentionRoleID)
 
 	// Role functions
+	c.addContextFunc("createRole", c.tmplCreateRole)
 	c.addContextFunc("getRole", c.tmplGetRole)
 	c.addContextFunc("getRoleID", c.tmplGetRoleID)
 	c.addContextFunc("getRoleName", c.tmplGetRoleName)
@@ -758,6 +760,7 @@ func baseContextFuncs(c *Context) {
 	c.addContextFunc("getTargetPermissionsIn", c.tmplGetTargetPermissionsIn)
 
 	// Channel functions
+	c.addContextFunc("createChannel", c.tmplCreateChannel)
 	c.addContextFunc("editChannelName", c.tmplEditChannelName)
 	c.addContextFunc("editChannelTopic", c.tmplEditChannelTopic)
 
