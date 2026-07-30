@@ -110,6 +110,18 @@ func CreateComponent(expectedType discordgo.ComponentType, values ...any) (disco
 		comp := discordgo.Label{}
 		err = json.Unmarshal(encoded, &comp)
 		component = comp
+	case discordgo.CheckboxGroupComponent:
+		comp := discordgo.CheckboxGroup{}
+		err = json.Unmarshal(encoded, &comp)
+		component = comp
+	case discordgo.CheckboxComponent:
+		comp := discordgo.Checkbox{}
+		err = json.Unmarshal(encoded, &comp)
+		component = comp
+	case discordgo.RadioGroupComponent:
+		comp := discordgo.RadioGroup{}
+		err = json.Unmarshal(encoded, &comp)
+		component = comp
 	}
 
 	if err != nil {
@@ -645,6 +657,149 @@ func CreateSeparator(large any) *discordgo.Separator {
 	return &discordgo.Separator{
 		Spacing: spacing,
 	}
+}
+
+func CreateRadioGroup(values ...any) (*discordgo.RadioGroup, error) {
+	var messageSdict map[string]any
+	switch t := values[0].(type) {
+	case SDict:
+		messageSdict = t
+	case *SDict:
+		messageSdict = *t
+	case map[string]any:
+		messageSdict = t
+	case *discordgo.RadioGroup:
+		return t, nil
+	case discordgo.RadioGroup:
+		return &t, nil
+	default:
+		dict, err := StringKeyDictionary(values...)
+		if err != nil {
+			return nil, err
+		}
+		messageSdict = dict
+	}
+
+	var radioGroup discordgo.RadioGroup
+	convertedRadioGroup := make(map[string]any)
+	for k, v := range messageSdict {
+		switch strings.ToLower(k) {
+		case "custom_id":
+			c, err := validateCustomID(TemplateCustomIDPrefix+ToString(v), nil)
+			if err != nil {
+				return nil, err
+			}
+			if len(radioGroup.Options) < 2 || len(radioGroup.Options) > 10 {
+				return nil, errors.New("invalid number of radiogroup options, must have between 2 and 10")
+			}
+			convertedRadioGroup[k] = c
+		default:
+			convertedRadioGroup[k] = v
+		}
+	}
+
+	c, err := CreateComponent(discordgo.RadioGroupComponent, convertedRadioGroup)
+	if err == nil {
+		radioGroup = c.(discordgo.RadioGroup)
+	}
+	return &radioGroup, err
+}
+
+func CreateCheckboxGroup(values ...any) (*discordgo.CheckboxGroup, error) {
+	var messageSdict map[string]any
+	switch t := values[0].(type) {
+	case SDict:
+		messageSdict = t
+	case *SDict:
+		messageSdict = *t
+	case map[string]any:
+		messageSdict = t
+	case *discordgo.CheckboxGroup:
+		return t, nil
+	case discordgo.CheckboxGroup:
+		return &t, nil
+	default:
+		dict, err := StringKeyDictionary(values...)
+		if err != nil {
+			return nil, err
+		}
+		messageSdict = dict
+	}
+
+	var checkboxGroup discordgo.CheckboxGroup
+	convertedCheckboxGroup := make(map[string]any)
+	for k, v := range messageSdict {
+		switch strings.ToLower(k) {
+		case "custom_id":
+			c, err := validateCustomID(TemplateCustomIDPrefix+ToString(v), nil)
+			if err != nil {
+				return nil, err
+			}
+			convertedCheckboxGroup[k] = c
+		default:
+			convertedCheckboxGroup[k] = v
+		}
+	}
+
+	c, err := CreateComponent(discordgo.CheckboxGroupComponent, convertedCheckboxGroup)
+	if err == nil {
+		checkboxGroup = c.(discordgo.CheckboxGroup)
+		if len(checkboxGroup.Options) < 1 || len(checkboxGroup.Options) > 10 {
+			return nil, errors.New("invalid number of checkboxgroup options, must have between 1 and 10")
+		}
+		if checkboxGroup.MinValues > 10 {
+			return nil, errors.New("invalid min values in checkboxgroup, must be less than 10")
+		}
+		if checkboxGroup.MaxValues < checkboxGroup.MinValues || checkboxGroup.MaxValues > 10 {
+			return nil, errors.New("invalid max values in checkboxgroup, max 10 and greater than min values")
+		}
+	}
+
+	return &checkboxGroup, err
+}
+
+func CreateCheckbox(values ...any) (*discordgo.Checkbox, error) {
+	var messageSdict map[string]any
+	switch t := values[0].(type) {
+	case SDict:
+		messageSdict = t
+	case *SDict:
+		messageSdict = *t
+	case map[string]any:
+		messageSdict = t
+	case *discordgo.Checkbox:
+		return t, nil
+	case discordgo.Checkbox:
+		return &t, nil
+	default:
+		dict, err := StringKeyDictionary(values...)
+		if err != nil {
+			return nil, err
+		}
+		messageSdict = dict
+	}
+
+	var checkbox discordgo.Checkbox
+	convertedCheckbox := make(map[string]any)
+	for k, v := range messageSdict {
+		switch strings.ToLower(k) {
+		case "custom_id":
+			c, err := validateCustomID(TemplateCustomIDPrefix+ToString(v), nil)
+			if err != nil {
+				return nil, err
+			}
+			convertedCheckbox[k] = c
+		default:
+			convertedCheckbox[k] = v
+		}
+	}
+
+	c, err := CreateComponent(discordgo.CheckboxComponent, convertedCheckbox)
+	if err == nil {
+		checkbox = c.(discordgo.Checkbox)
+	}
+
+	return &checkbox, err
 }
 
 func CreateComponentArray(msgFiles *[]*discordgo.File, values ...any) ([]discordgo.TopLevelComponent, error) {

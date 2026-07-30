@@ -102,6 +102,9 @@ var (
 		"clabel":           CreateLabel,
 		"ctextInput":       CreateTextInput,
 		"ctextDisplay":     CreateTextDisplay,
+		"cradioGroup":      CreateRadioGroup,
+		"ccheckboxGroup":   CreateCheckboxGroup,
+		"ccheckbox":        CreateCheckbox,
 		"cfileUpload":		CreateFileUpload,
 
 		// message builders
