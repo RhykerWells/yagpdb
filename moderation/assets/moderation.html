@@ -40,6 +40,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
                                 class="indicator indicator-{{if .ModConfig.WarnCommandsEnabled}}success{{else}}danger{{end}}"></span>
                         </a></li>
                 </ul>
+                {{template "codemirror_toggle"}}
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane active" id="general">{{template "moderation_general" .}}</div>
                     <div role="tabpanel" class="tab-pane" id="mute">{{template "moderation_mute" .}}</div>
@@ -99,6 +100,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
         MuteManagedChanged();
     })
 </script>
+{{template "codemirror_assets" .}}
 {{template "cp_footer" .}}
 
 {{end}}
@@ -118,7 +120,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
         <div class="form-group">
             <label>Channel to announce bans and kicks through the bot in (modlog)</label>
             <select class="form-control" name="ActionChannel" data-requireperms-embed>
-                {{textChannelOptions .ActiveGuild.Channels .ModConfig.ActionChannel true "None"}}
+                {{textOnlyChannelOptions .ActiveGuild.Channels .ModConfig.ActionChannel true "None"}}
             </select>
         </div>
         <hr />
@@ -126,7 +128,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
         <div class="form-group">
             <label>Channel to send error messages of the moderation DMs</label>
             <select class="form-control" name="ErrorChannel" data-requireperms-embed>
-                {{textChannelOptions .ActiveGuild.Channels .ModConfig.ErrorChannel true "None"}}
+                {{textOnlyChannelOptions .ActiveGuild.Channels .ModConfig.ErrorChannel true "None"}}
             </select>
         </div>
         <hr />
@@ -164,7 +166,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
         <div class="form-group">
             <label>Channel to send messages for the mods/admins in (reports and such)</label>
             <select class="form-control" name="ReportChannel" data-requireperms-send>
-                {{textChannelOptions .ActiveGuild.Channels .ModConfig.ReportChannel true "None"}}
+                {{textOnlyChannelOptions .ActiveGuild.Channels .ModConfig.ReportChannel true "None"}}
             </select>
         </div>
         <hr />
@@ -185,6 +187,58 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
         <p>For the author and reason to show up when this is used you need to give the bot "audit log" permissions.</p>
 
          <hr />
+        {{checkbox "LogTimeouts" "log-timeouts" "Log timeout events not made through the bot" .ModConfig.LogTimeouts}}
+        <p>For the author and reason to show up when this is used you need to give the bot "audit log" permissions.</p>
+    </div>
+</div>
+{{end}}
+
+{{define "moderation_timeout"}}
+<p>Timing out users allows you to punish users by removing their ability to talk or react using discords native Timeout feature </p>
+<p>Unlike a mute, timeouts have a mandatory duration, and the user cannot communicate in the server at all in anyway, including not being able to add reaction</p>
+<p>Timeouts also don't need a role to be managed by the bot</p>
+<div class="row">
+    <div class="col-sm">
+        {{checkbox "TimeoutEnabled" "timeout-enabled" "Enable Timeout" .ModConfig.TimeoutEnabled}}
+        <p><code>(mention or prefix) timeout @user 10 some reason</code><br />
+            Only users with Timeout permissions or (Moderate Member permissions) can use this (or with roles specified below).<br /></p>
+        <hr />
+
+        <hr />
+        <div class="form-group">
+            <label>Users with the following roles will have permission to use timeout related commands</label><br>
+            <select class="multiselect" name="TimeoutCmdRoles" data-plugin-multiselect multiple="multiple">
+                {{roleOptionsMulti .ActiveGuild.Roles nil .ModConfig.TimeoutCmdRoles}}
+            </select>
+        </div>
+        <hr />
+
+        {{checkbox "TimeoutReasonOptional" "timeout-reason-optional" "Timeout Reason optional" .ModConfig.TimeoutReasonOptional}}
+        <hr />
+
+        <div class="form-group">
+            <label>Default timeout duration in minutes</label>
+            <input type="number" min="1" max="40320" name="DefaultTimeoutDuration" class="form-control"
+                value="{{or .ModConfig.DefaultTimeoutDuration.Int64 .DefaultTimeoutDuration}}">
+        </div>
+        <hr />
+    </div>
+    <div class="col-sm">
+        <div class="form-group">
+            <label>Timeout DM (Leave empty for default)</label>
+            <textarea rows="5" class="form-control" name="TimeoutMessage"
+                placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.TimeoutMessage .DefaultDMMessage}}</textarea>
+            <p class="help-block">
+                Available template data:<br />
+                {{template "template_helper_user"}} - The user being timedout<br />
+                <code>{{"{{.Reason}}"}}</code> - The reason specified in the timeout<br />
+                {{template "template_helper_mod_author"}}<br>
+                <code>{{"{{.Duration}}"}}</code> - The duration<br>
+                <code>{{"{{.HumanDuration}}"}}</code> - The duration in a human friendly format
+                (<code>1 hour and 3 minutes</code> for example)<br>
+            </p>
+        </div>
+        <hr />
     </div>
 </div>
 {{end}}
@@ -254,7 +308,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
     <div class="col-sm">
         <div class="form-group">
             <label>Mute DM (Leave empty for default)</label>
-            <textarea rows="5" class="form-control" name="MuteMessage"
+            <textarea rows="5" class="form-control template-editor" name="MuteMessage"
                 placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.MuteMessage .DefaultDMMessage}}</textarea>
             <p class="help-block">
                 Available template data:<br />
@@ -269,7 +323,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
         <hr />
         <div class="form-group">
             <label>Unmute DM (Leave empty for default)</label>
-            <textarea rows="5" class="form-control" name="UnmuteMessage"
+            <textarea rows="5" class="form-control template-editor" name="UnmuteMessage"
                 placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.UnmuteMessage .DefaultDMMessage}}</textarea>
             <p class="help-block">
                 Available template data:<br />
@@ -318,7 +372,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
     <div class="col-sm">
         <div class="form-group">
             <label>Kick DM (Leave empty for default)</label>
-            <textarea rows="5" class="form-control" name="KickMessage"
+            <textarea rows="5" class="form-control template-editor" name="KickMessage"
                 placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.KickMessage .DefaultDMMessage}}</textarea>
 
             <p class="help-block">Available template data:<br />
@@ -377,7 +431,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
     <div class="col-sm">
         <div class="form-group">
             <label>Ban DM (Leave empty for default)</label>
-            <textarea rows="5" class="form-control" name="BanMessage"
+            <textarea rows="5" class="form-control template-editor" name="BanMessage"
                 placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.BanMessage .DefaultDMMessage}}</textarea>
             <p class="help-block">Available template data:<br />
                 {{template "template_helper_user"}} - The user being banned/kicked<br />
@@ -426,7 +480,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
     <div class="col-sm">
         <div class="form-group">
             <label>Warning DM (Leave empty for default)</label>
-            <textarea rows="5" class="form-control" name="WarnMessage"
+            <textarea rows="5" class="form-control template-editor" name="WarnMessage"
                 placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.WarnMessage .DefaultDMMessage}}</textarea>
             <p class="help-block">Available template data:<br />
                 {{template "template_helper_user"}} - The user being warned<br />

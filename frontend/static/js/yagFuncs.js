@@ -140,6 +140,9 @@ var yagFuncs = {
   ctextInput: true,
   cfileUpload: true,
   ctextDisplay: true,
+  cradioGroup: true,
+  ccheckbox: true,
+  ccheckboxGroup: true,
   clabel: true,
   componentBuilder: true,
   modalBuilder: true,
@@ -210,4 +213,5 @@ var yagFuncs = {
   dbBottomEntries: true,
   dbCount: true,
   dbRank: true,
+
 };

@@ -7,7 +7,7 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/common/prom"
 	"github.com/RhykerWells/yagpdb/v2/common/run"
 	"github.com/RhykerWells/yagpdb/v2/lib/confusables"
-	"github.com/RhykerWells/yagpdb/v2/trivia"
+	"github.com/RhykerWells/yagpdb/v2/voiceroles"
 	"github.com/RhykerWells/yagpdb/v2/web/discorddata"
 
 	// Core yagpdb packages
@@ -26,6 +26,7 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/discordlogger"
 	"github.com/RhykerWells/yagpdb/v2/roblox"
 	"github.com/RhykerWells/yagpdb/v2/logs"
+	"github.com/RhykerWells/yagpdb/v2/messagecreator"
 	"github.com/RhykerWells/yagpdb/v2/moderation"
 	"github.com/RhykerWells/yagpdb/v2/notifications"
 	"github.com/RhykerWells/yagpdb/v2/premium"
@@ -68,6 +69,7 @@ func main() {
 	reminders.RegisterPlugin()
 	rolecommands.RegisterPlugin()
 	tickets.RegisterPlugin()
+	messagecreator.RegisterPlugin()
 	verification.RegisterPlugin()
 	premium.RegisterPlugin()
 	patreonpremiumsource.RegisterPlugin()
@@ -78,8 +80,9 @@ func main() {
 	internalapi.RegisterPlugin()
 	prom.RegisterPlugin()
 	featureflags.RegisterPlugin()
-	trivia.RegisterPlugin()
 	roblox.RegisterPlugin()
+	voiceroles.RegisterPlugin()
+
 	// Register confusables replacer
 	confusables.Init()
 

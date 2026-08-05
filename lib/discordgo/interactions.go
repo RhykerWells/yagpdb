@@ -114,6 +114,9 @@ type ApplicationCommandOption struct {
 	MinValue *float64 `json:"min_value,omitempty"`
 	// Maximum value of number/integer option.
 	MaxValue float64 `json:"max_value,omitempty"`
+	// Minimum and maximum allowed length for string options.
+	MinLength *int `json:"min_length,omitempty"`
+	MaxLength *int `json:"max_length,omitempty"`
 }
 
 // ApplicationCommandOptionChoice represents a slash command option choice.
@@ -297,9 +300,10 @@ type InteractionData interface {
 
 // ApplicationCommandInteractionData contains the data of application command interaction.
 type ApplicationCommandInteractionData struct {
-	ID       int64                                      `json:"id,string"`
-	Name     string                                     `json:"name"`
-	Resolved *ApplicationCommandInteractionDataResolved `json:"resolved"`
+	ID          int64                                      `json:"id,string"`
+	Name        string                                     `json:"name"`
+	CommandType ApplicationCommandType                     `json:"type"`
+	Resolved    *ApplicationCommandInteractionDataResolved `json:"resolved"`
 
 	// Slash command options
 	Options []*ApplicationCommandInteractionDataOption `json:"options"`
@@ -539,7 +543,7 @@ type InteractionResponse struct {
 type InteractionResponseData struct {
 	TTS             bool                `json:"tts"`
 	Content         string              `json:"content"`
-	Components      []TopLevelComponent `json:"components"`
+	Components      []TopLevelComponent `json:"components"` //because it can be modal / top level components
 	Embeds          []*MessageEmbed     `json:"embeds"`
 	AllowedMentions *AllowedMentions    `json:"allowed_mentions,omitempty"`
 	Flags           MessageFlags        `json:"flags,omitempty"`
@@ -596,4 +600,17 @@ func VerifyInteraction(r *http.Request, key ed25519.PublicKey) bool {
 	}
 
 	return ed25519.Verify(key, msg.Bytes(), sig)
+}
+func (m *InteractionResponseData) ToMessageSend() *MessageSend {
+	ms := &MessageSend{
+		Content:    m.Content,
+		Embeds:     m.Embeds,
+		Components: m.Components,
+		Files:      m.Files,
+		Flags:      m.Flags,
+	}
+	if m.AllowedMentions != nil {
+		ms.AllowedMentions = *m.AllowedMentions
+	}
+	return ms
 }

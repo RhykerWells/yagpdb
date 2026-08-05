@@ -263,7 +263,7 @@ func CreateEmbed(values ...interface{}) (*discordgo.MessageEmbed, error) {
 func CreateRole(values ...interface{}) (*discordgo.RoleCreate, error) {
 	if len(values) < 1 {
 		return &discordgo.RoleCreate{}, nil
-}
+	}
 
 	var m map[string]interface{}
 	switch t := values[0].(type) {
@@ -295,7 +295,7 @@ func CreateRole(values ...interface{}) (*discordgo.RoleCreate, error) {
 	return role, nil
 }
 
-func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
+func CreateComplexMessage(values ...interface{}) (*discordgo.MessageSend, error) {
 	if len(values) < 1 {
 		return &discordgo.MessageSend{}, nil
 	}
@@ -327,9 +327,11 @@ func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
 			if val == nil {
 				continue
 			}
+			msg.Embeds = make([]*discordgo.MessageEmbed, 0)
 			v, _ := indirect(reflect.ValueOf(val))
 			if v.Kind() == reflect.Slice {
 				const maxEmbeds = 10 // Discord limitation
+
 				for i := 0; i < v.Len() && i < maxEmbeds; i++ {
 					embed, err := CreateEmbed(v.Index(i).Interface())
 					if err != nil {
@@ -483,7 +485,7 @@ func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
 			}
 
 			msg.Reference = &discordgo.MessageReference{
-				Type: 1,
+				Type: discordgo.MessageReferenceTypeForward,
 			}
 			for k, v := range m {
 				switch strings.ToLower(k) {
@@ -542,169 +544,6 @@ func CreateMessageSend(values ...interface{}) (*discordgo.MessageSend, error) {
 	return msg, nil
 }
 
-func CreateMessageEdit(values ...interface{}) (*discordgo.MessageEdit, error) {
-	if len(values) < 1 {
-		return &discordgo.MessageEdit{}, nil
-	}
-
-	if m, ok := values[0].(*discordgo.MessageEdit); len(values) == 1 && ok {
-		return m, nil
-	}
-
-	compBuilder, err := CreateComponentBuilder(values...)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := &discordgo.MessageEdit{}
-	for i, key := range compBuilder.Components {
-		val := compBuilder.Values[i]
-		switch strings.ToLower(key) {
-		case "content":
-			temp := fmt.Sprint(val)
-			msg.Content = &temp
-		case "embed":
-			if val == nil {
-				continue
-			}
-			v, _ := indirect(reflect.ValueOf(val))
-			if v.Kind() == reflect.Slice {
-				const maxEmbeds = 10 // Discord limitation
-				for i := 0; i < v.Len() && i < maxEmbeds; i++ {
-					embed, err := CreateEmbed(v.Index(i).Interface())
-					if err != nil {
-						return nil, err
-					}
-					msg.Embeds = append(msg.Embeds, embed)
-				}
-			} else {
-				embed, err := CreateEmbed(val)
-				if err != nil {
-					return nil, err
-				}
-				msg.Embeds = append(msg.Embeds, embed)
-			}
-		case "silent":
-			if val == nil || val == false {
-				continue
-			}
-			msg.Flags |= discordgo.MessageFlagsSuppressNotifications
-		case "allowed_mentions":
-			if val == nil {
-				msg.AllowedMentions = discordgo.AllowedMentions{}
-				continue
-			}
-			parsed, err := parseAllowedMentions(val)
-			if err != nil {
-				return nil, err
-			}
-			msg.AllowedMentions = *parsed
-		case "components":
-			if val == nil {
-				continue
-			}
-			v, _ := indirect(reflect.ValueOf(val))
-			if v.Kind() == reflect.Slice {
-				msg.Components, err = distributeComponentsIntoActionsRows(v)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				var component discordgo.InteractiveComponent
-				switch comp := val.(type) {
-				case *discordgo.SelectMenu:
-					component = comp
-				case *discordgo.Button:
-					component = comp
-				default:
-					return nil, errors.New("invalid component passed to send message builder")
-				}
-				msg.Components = append(msg.Components, &discordgo.ActionsRow{Components: []discordgo.InteractiveComponent{component}})
-			}
-		case "buttons":
-			if val == nil {
-				continue
-			}
-			v, _ := indirect(reflect.ValueOf(val))
-			if v.Kind() == reflect.Slice {
-				buttons := []*discordgo.Button{}
-				const maxButtons = 25 // Discord limitation
-				for i := 0; i < v.Len() && i < maxButtons; i++ {
-					button, err := CreateButton(v.Index(i).Interface())
-					if err != nil {
-						return nil, err
-					}
-					buttons = append(buttons, button)
-				}
-				comps, err := distributeComponentsIntoActionsRows(reflect.ValueOf(buttons))
-				if err != nil {
-					return nil, err
-				}
-				msg.Components = append(msg.Components, comps...)
-			} else {
-				button, err := CreateButton(val)
-				if err != nil {
-					return nil, err
-				}
-				if button.Style == discordgo.LinkButton {
-					button.CustomID = ""
-				}
-				msg.Components = append(msg.Components, &discordgo.ActionsRow{Components: []discordgo.InteractiveComponent{button}})
-			}
-		case "menus":
-			if val == nil {
-				continue
-			}
-			v, _ := indirect(reflect.ValueOf(val))
-			if v.Kind() == reflect.Slice {
-				menus := []*discordgo.SelectMenu{}
-				const maxMenus = 5 // Discord limitation
-				for i := 0; i < v.Len() && i < maxMenus; i++ {
-					menu, err := CreateSelectMenu(v.Index(i).Interface())
-					if err != nil {
-						return nil, err
-					}
-					menus = append(menus, menu)
-				}
-				comps, err := distributeComponentsIntoActionsRows(reflect.ValueOf(menus))
-				if err != nil {
-					return nil, err
-				}
-				msg.Components = append(msg.Components, comps...)
-			} else {
-				menu, err := CreateSelectMenu(val)
-				if err != nil {
-					return nil, err
-				}
-				msg.Components = append(msg.Components, &discordgo.ActionsRow{Components: []discordgo.InteractiveComponent{menu}})
-			}
-		case "suppress_embeds":
-			if val == nil || val == false {
-				continue
-			}
-			msg.Flags |= discordgo.MessageFlagsSuppressEmbeds
-		case "is_components_v2":
-			if val == nil || val == false {
-				continue
-			}
-			msg.Flags |= discordgo.MessageFlagsIsComponentsV2
-		default:
-			return nil, errors.New(`invalid key "` + key + `" passed to message edit builder`)
-		}
-
-	}
-
-	if len(msg.Components) > 0 {
-		err := validateTopLevelComponentsCustomIDs(msg.Components, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return msg, nil
-
-}
-
 func parseAllowedMentions(Data interface{}) (*discordgo.AllowedMentions, error) {
 
 	if m, ok := Data.(discordgo.AllowedMentions); ok {
@@ -736,9 +575,10 @@ func parseAllowedMentions(Data interface{}) (*discordgo.AllowedMentions, error) 
 					return nil, errors.New(`Allowed Mentions Parsing: invalid slice element in "Parse", accepts "roles", "users", and "everyone"`)
 				}
 				parseMentions = append(parseMentions, discordgo.AllowedMentionType(elem_conv))
-				if elem_conv == "users" {
+				switch elem_conv {
+				case "users":
 					parsingUsers = true
-				} else if elem_conv == "roles" {
+				case "roles":
 					parsingRoles = true
 				}
 			}
@@ -1411,7 +1251,11 @@ func shuffle(seq interface{}) (interface{}, error) {
 	return shuffled.Interface(), nil
 }
 
-func tmplToInt(from interface{}) int {
+func tmplToInt(from any, base ...int) int {
+	b := 10
+	if len(base) > 0 {
+		b = base[0]
+	}
 	t := reflect.ValueOf(from)
 	switch {
 	case t.CanInt():
@@ -1421,14 +1265,18 @@ func tmplToInt(from interface{}) int {
 	case t.CanUint():
 		return int(t.Uint())
 	case t.Kind() == reflect.String:
-		parsed, _ := strconv.ParseInt(t.String(), 10, 64)
+		parsed, _ := strconv.ParseInt(t.String(), b, 64)
 		return int(parsed)
 	default:
 		return 0
 	}
 }
 
-func ToInt64(from interface{}) int64 {
+func ToInt64(from any, base ...int) int64 {
+	b := 10
+	if len(base) > 0 {
+		b = base[0]
+	}
 	t := reflect.ValueOf(from)
 	switch {
 	case t.CanInt():
@@ -1438,7 +1286,7 @@ func ToInt64(from interface{}) int64 {
 	case t.CanUint():
 		return int64(t.Uint())
 	case t.Kind() == reflect.String:
-		parsed, _ := strconv.ParseInt(t.String(), 10, 64)
+		parsed, _ := strconv.ParseInt(t.String(), b, 64)
 		return parsed
 	default:
 		return 0

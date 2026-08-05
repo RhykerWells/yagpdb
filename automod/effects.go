@@ -3,6 +3,7 @@ package automod
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 
 type Effect interface {
 	Apply(ctxData *TriggeredRuleData, settings interface{}) error
+	IsRoleEffect() bool
 }
 
 ///////////////////////////////////////////////////////
@@ -46,6 +48,10 @@ func (del *DeleteMessageEffect) Description() (description string) {
 
 func (del *DeleteMessageEffect) UserSettings() []*SettingDef {
 	return []*SettingDef{}
+}
+
+func (del *DeleteMessageEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (del *DeleteMessageEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -110,6 +116,10 @@ func (del *DeleteMessagesEffect) UserSettings() []*SettingDef {
 			Default: 15,
 		},
 	}
+}
+
+func (del *DeleteMessagesEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (del *DeleteMessagesEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -200,6 +210,10 @@ func (vio *AddViolationEffect) UserSettings() []*SettingDef {
 	}
 }
 
+func (vio *AddViolationEffect) IsRoleEffect() bool {
+	return false
+}
+
 func (vio *AddViolationEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
 	settingsCast := settings.(*AddViolationEffectData)
 	violation := &models.AutomodViolation{
@@ -258,6 +272,10 @@ func (kick *KickUserEffect) UserSettings() []*SettingDef {
 			Kind: SettingTypeString,
 		},
 	}
+}
+
+func (kick *KickUserEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (kick *KickUserEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -330,6 +348,10 @@ func (ban *BanUserEffect) UserSettings() []*SettingDef {
 	}
 }
 
+func (ban *BanUserEffect) IsRoleEffect() bool {
+	return false
+}
+
 func (ban *BanUserEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
 	settingsCast := settings.(*BanUserEffectData)
 
@@ -393,6 +415,10 @@ func (mute *MuteUserEffect) Description() (description string) {
 	return "Mutes the user"
 }
 
+func (mute *MuteUserEffect) IsRoleEffect() bool {
+	return false
+}
+
 func (mute *MuteUserEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
 	settingsCast := settings.(*MuteUserEffectData)
 
@@ -445,6 +471,10 @@ func (warn *WarnUserEffect) Name() (name string) {
 
 func (warn *WarnUserEffect) Description() (description string) {
 	return "Warns the user, with an optional custom warning message"
+}
+
+func (warn *WarnUserEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (warn *WarnUserEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -501,6 +531,10 @@ func (sn *SetNicknameEffect) Description() (description string) {
 	return "Sets the nickname of the user"
 }
 
+func (sn *SetNicknameEffect) IsRoleEffect() bool {
+	return false
+}
+
 func (sn *SetNicknameEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
 	settingsCast := settings.(*SetNicknameEffectData)
 
@@ -555,6 +589,10 @@ func (rv *ResetViolationsEffect) Description() (description string) {
 	return "Resets the violations of a user"
 }
 
+func (rv *ResetViolationsEffect) IsRoleEffect() bool {
+	return false
+}
+
 func (rv *ResetViolationsEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
 	settingsCast := settings.(*ResetViolationsEffectData)
 	_, err := models.AutomodViolations(qm.Where("guild_id = ? AND user_id = ? AND name = ?", ctxData.GS.ID, ctxData.MS.User.ID, settingsCast.Name)).DeleteAll(context.Background(), common.PQ)
@@ -602,6 +640,10 @@ func (gf *GiveRoleEffect) Name() (name string) {
 
 func (gf *GiveRoleEffect) Description() (description string) {
 	return "Gives the specified role to the user, optionally with a duration after which the role is removed from the user."
+}
+
+func (gf *GiveRoleEffect) IsRoleEffect() bool {
+	return true
 }
 
 func (gf *GiveRoleEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -669,10 +711,14 @@ func (rf *RemoveRoleEffect) Description() (description string) {
 	return "Removes the specified role from the user, optionally with a duration after which the role is added back to the user."
 }
 
+func (rf *RemoveRoleEffect) IsRoleEffect() bool {
+	return true
+}
+
 func (rf *RemoveRoleEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
 	settingsCast := settings.(*RemoveRoleEffectData)
 
-	if !common.ContainsInt64Slice(ctxData.MS.Member.Roles, settingsCast.Role) {
+	if !slices.Contains(ctxData.MS.Member.Roles, settingsCast.Role) {
 		return nil
 	}
 
@@ -752,6 +798,10 @@ func (send *SendChannelMessageEffect) UserSettings() []*SettingDef {
 			Default: nil,
 		},
 	}
+}
+
+func (send *SendChannelMessageEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (send *SendChannelMessageEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -846,6 +896,10 @@ func (send *SendModeratorAlertMessageEffect) UserSettings() []*SettingDef {
 			Default: nil,
 		},
 	}
+}
+
+func (send *SendModeratorAlertMessageEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (send *SendModeratorAlertMessageEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {
@@ -966,6 +1020,10 @@ func (slow *EnableChannelSlowmodeEffect) Name() (name string) {
 
 func (slow *EnableChannelSlowmodeEffect) Description() (description string) {
 	return "Enables discord's builtin slowmode in the channel for the specified duration, or forever."
+}
+
+func (slow *EnableChannelSlowmodeEffect) IsRoleEffect() bool {
+	return false
 }
 
 func (slow *EnableChannelSlowmodeEffect) Apply(ctxData *TriggeredRuleData, settings interface{}) error {

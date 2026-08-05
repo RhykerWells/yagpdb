@@ -763,17 +763,18 @@ func (r Roles) Swap(i, j int) {
 
 // A VoiceState stores the voice states of Guilds
 type VoiceState struct {
-	UserID     int64  `json:"user_id,string"`
-	SessionID  string `json:"session_id"`
-	ChannelID  int64  `json:"channel_id,string"`
-	GuildID    int64  `json:"guild_id,string"`
-	Suppress   bool   `json:"suppress"`
-	SelfMute   bool   `json:"self_mute"`
-	SelfDeaf   bool   `json:"self_deaf"`
-	Mute       bool   `json:"mute"`
-	Deaf       bool   `json:"deaf"`
-	SelfStream bool   `json:"self_stream"`
-	SelfVideo  bool   `json:"self_video"`
+	UserID                 int64  `json:"user_id,string"`
+	SessionID              string `json:"session_id"`
+	ChannelID              int64  `json:"channel_id,string"`
+	GuildID                int64  `json:"guild_id,string"`
+	Suppress               bool   `json:"suppress"`
+	SelfMute               bool   `json:"self_mute"`
+	SelfDeaf               bool   `json:"self_deaf"`
+	Mute                   bool   `json:"mute"`
+	Deaf                   bool   `json:"deaf"`
+	SelfStream             bool   `json:"self_stream"`
+	SelfVideo              bool   `json:"self_video"`
+	MaxDAVEProtocolVersion int    `json:"max_dave_protocol_version"`
 }
 
 // A Presence stores the online, offline, or idle and game status of Guild members.
@@ -1416,6 +1417,10 @@ type AuditLogEntry struct {
 	GuildID    int64             `json:"guild_id,string,omitempty"`
 }
 
+func (a *AuditLogEntry) GetGuildID() int64 {
+	return a.GuildID
+}
+
 // A UserGuildSettingsChannelOverride stores data for a channel override for a users guild settings.
 type UserGuildSettingsChannelOverride struct {
 	Muted                bool  `json:"muted"`
@@ -1466,10 +1471,37 @@ type WebhookParams struct {
 	AvatarURL       string              `json:"avatar_url,omitempty"`
 	TTS             bool                `json:"tts,omitempty"`
 	File            *File               `json:"-,omitempty"`
-	Components      []TopLevelComponent `json:"components"`
+	Components      []TopLevelComponent `json:"components,omitempty"`
 	Embeds          []*MessageEmbed     `json:"embeds,omitempty"`
-	Flags           int64               `json:"flags,omitempty"`
+	Flags           MessageFlags        `json:"flags,omitempty"`
 	AllowedMentions *AllowedMentions    `json:"allowed_mentions,omitempty"`
+}
+
+func (m *WebhookParams) MarshalJSON() ([]byte, error) {
+	type WebhookParamsAlias WebhookParams
+	temp := struct {
+		*WebhookParamsAlias
+		Content         string               `json:"content,omitempty"`
+		Components      *[]TopLevelComponent `json:"components,omitempty"`
+		Embeds          *[]*MessageEmbed     `json:"embeds,omitempty"`
+		AllowedMentions *AllowedMentions     `json:"allowed_mentions,omitempty"`
+		Flags           *MessageFlags        `json:"flags,omitempty"`
+	}{
+		WebhookParamsAlias: (*WebhookParamsAlias)(m),
+		Content:            m.Content,
+		AllowedMentions:    m.AllowedMentions,
+		Flags:              &m.Flags,
+	}
+
+	if m.Components != nil {
+		temp.Components = &m.Components
+	}
+
+	if m.Embeds != nil {
+		temp.Embeds = &m.Embeds
+	}
+
+	return json.Marshal(temp)
 }
 
 // MessageReaction stores the data for a message reaction.
@@ -1568,8 +1600,9 @@ type InviteUser struct {
 
 type CreateApplicationCommandRequest struct {
 	Name              string                      `json:"name"`                         // 1-32 character name matching ^[\w-]{1,32}$
-	Description       string                      `json:"description"`                  // 1-100 character description
-	Options           []*ApplicationCommandOption `json:"options"`                      // the parameters for the command
+	Type              ApplicationCommandType      `json:"type,omitempty"`               // defaults to CHAT_INPUT (1); 2=USER, 3=MESSAGE context menu
+	Description       string                      `json:"description,omitempty"`        // 1-100 character description (must be empty for context menu commands)
+	Options           []*ApplicationCommandOption `json:"options,omitempty"`            // the parameters for the command
 	DefaultPermission *bool                       `json:"default_permission,omitempty"` // (default true)	whether the command is enabled by default when the app is added to a guild
 	NSFW              bool                        `json:"nsfw,omitempty"`               // marks a command as age-restricted
 }
@@ -1582,10 +1615,12 @@ func (a *ApplicationCommandInteractionDataResolved) UnmarshalJSON(b []byte) erro
 	}
 
 	*a = ApplicationCommandInteractionDataResolved{
-		Users:    make(map[int64]*User),
-		Members:  make(map[int64]*Member),
-		Roles:    make(map[int64]*Role),
-		Channels: make(map[int64]*Channel),
+		Users:       make(map[int64]*User),
+		Members:     make(map[int64]*Member),
+		Roles:       make(map[int64]*Role),
+		Channels:    make(map[int64]*Channel),
+		Messages:    make(map[int64]*Message),
+		Attachments: make(map[int64]*MessageAttachment),
 	}
 
 	for k, v := range temp.Channels {
@@ -1620,14 +1655,32 @@ func (a *ApplicationCommandInteractionDataResolved) UnmarshalJSON(b []byte) erro
 		a.Users[parsed] = v
 	}
 
+	for k, v := range temp.Messages {
+		parsed, err := strconv.ParseInt(k, 10, 64)
+		if err != nil {
+			return err
+		}
+		a.Messages[parsed] = v
+	}
+
+	for k, v := range temp.Attachments {
+		parsed, err := strconv.ParseInt(k, 10, 64)
+		if err != nil {
+			return err
+		}
+		a.Attachments[parsed] = v
+	}
+
 	return nil
 }
 
 type applicationCommandInteractionDataResolvedTemp struct {
-	Users    map[string]*User    `json:"users"`
-	Members  map[string]*Member  `json:"members"`
-	Roles    map[string]*Role    `json:"roles"`
-	Channels map[string]*Channel `json:"channels"`
+	Users       map[string]*User              `json:"users"`
+	Members     map[string]*Member            `json:"members"`
+	Roles       map[string]*Role              `json:"roles"`
+	Channels    map[string]*Channel           `json:"channels"`
+	Messages    map[string]*Message           `json:"messages"`
+	Attachments map[string]*MessageAttachment `json:"attachments"`
 }
 
 type applicationCommandInteractionDataOptionTemporary struct {
@@ -1665,13 +1718,20 @@ func (a *ApplicationCommandInteractionDataOption) UnmarshalJSON(b []byte) error 
 		v := false
 		err = json.Unmarshal(temp.Value, &v)
 		a.Value = v
-	case ApplicationCommandOptionUser, ApplicationCommandOptionChannel, ApplicationCommandOptionRole:
-		// parse the snowflake
+	case ApplicationCommandOptionUser, ApplicationCommandOptionChannel, ApplicationCommandOptionRole, ApplicationCommandOptionMentionable, ApplicationCommandOptionAttachment:
 		v := ""
-		err = json.Unmarshal(temp.Value, &v)
-		if err == nil {
+		if err = json.Unmarshal(temp.Value, &v); err == nil {
 			a.Value, err = strconv.ParseInt(v, 10, 64)
+		} else {
+			var n int64
+			if err = json.Unmarshal(temp.Value, &n); err == nil {
+				a.Value = n
+			}
 		}
+	case ApplicationCommandOptionNumber:
+		v := float64(0)
+		err = json.Unmarshal(temp.Value, &v)
+		a.Value = v
 	case ApplicationCommandOptionSubCommand:
 	case ApplicationCommandOptionSubCommandGroup:
 	}

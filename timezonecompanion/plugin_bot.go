@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -82,7 +83,7 @@ func (p *Plugin) AddCommands() {
 			zone := parsed.Args[0].Str()
 			loc, err := time.LoadLocation(zone)
 			if err != nil {
-				return fmt.Sprintf("Unknown timezone `%s`", zone), nil
+				return "Unknown timezone. Give it a TZ identifier as listed on <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>.", nil
 			}
 
 			name, _ := time.Now().In(loc).Zone()
@@ -222,7 +223,7 @@ func (p *Plugin) handleMessageCreate(evt *eventsystem.EventData) {
 			logger.WithError(err).WithField("guild", m.GuildID).Error("failed fetching guild config")
 			return
 		}
-	} else if common.ContainsInt64Slice(conf.DisabledInChannels, m.ChannelID) || (conf.NewChannelsDisabled && !common.ContainsInt64Slice(conf.EnabledInChannels, m.ChannelID)) {
+	} else if slices.Contains(conf.DisabledInChannels, m.ChannelID) || (conf.NewChannelsDisabled && !slices.Contains(conf.EnabledInChannels, m.ChannelID)) {
 		// disabled in this channel
 		return
 	}
