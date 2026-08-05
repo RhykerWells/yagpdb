@@ -311,15 +311,15 @@ func CreateSelectMenu(values ...any) (*discordgo.SelectMenu, error) {
 
 		// validation
 		if menu.MenuType == discordgo.StringSelectMenu && len(menu.Options) < 1 || len(menu.Options) > 25 {
-			return nil, errors.New("invalid number of menu options, must have between 1 and 25")
+			return nil, errors.New("invalid number of menu options in select menu, must have between 1 and 25")
 		}
 		if menu.MinValues != nil {
 			if *menu.MinValues < 0 || *menu.MinValues > 25 {
-				return nil, errors.New("invalid min values, must be between 0 and 25")
+				return nil, errors.New("invalid min values in select menu, must be between 0 and 25")
 			}
 		}
 		if menu.MaxValues > 25 {
-			return nil, errors.New("invalid max values, max 25")
+			return nil, errors.New("invalid max values in select menu, max 25")
 		}
 		checked := []string{}
 		for _, o := range menu.Options {
@@ -689,9 +689,6 @@ func CreateRadioGroup(values ...any) (*discordgo.RadioGroup, error) {
 			if err != nil {
 				return nil, err
 			}
-			if len(radioGroup.Options) < 2 || len(radioGroup.Options) > 10 {
-				return nil, errors.New("invalid number of radiogroup options, must have between 2 and 10")
-			}
 			convertedRadioGroup[k] = c
 		default:
 			convertedRadioGroup[k] = v
@@ -701,6 +698,9 @@ func CreateRadioGroup(values ...any) (*discordgo.RadioGroup, error) {
 	c, err := CreateComponent(discordgo.RadioGroupComponent, convertedRadioGroup)
 	if err == nil {
 		radioGroup = c.(discordgo.RadioGroup)
+		if len(radioGroup.Options) < 2 || len(radioGroup.Options) > 10 {
+			return nil, errors.New("invalid number of radiogroup options, must have between 2 and 10")
+		}
 	}
 	return &radioGroup, err
 }
@@ -1069,7 +1069,7 @@ func CreateContainer(msgFiles *[]*discordgo.File, values ...any) (*discordgo.Con
 
 func distributeComponentsIntoActionsRows(components reflect.Value) (returnComponents []discordgo.TopLevelComponent, err error) {
 	if components.Len() < 1 {
-		return
+		return make([]discordgo.TopLevelComponent, 0), nil
 	}
 
 	const maxRows = 5       // Discord limitation
