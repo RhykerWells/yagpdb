@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/RhykerWells/yagpdb/v2/bot/eventsystem"
 	"github.com/RhykerWells/yagpdb/v2/common"
 	"github.com/RhykerWells/yagpdb/v2/common/pubsub"
@@ -21,6 +20,7 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/lib/dstate"
 	"github.com/mediocregopher/radix/v3"
 	"github.com/sirupsen/logrus"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 )
 
 // SlashCommandResyncEvent is the pubsub event published (with the guild as the
@@ -53,7 +53,7 @@ func BotCachedGetCommandsWithSlashTrigger(guildID int64, ctx context.Context) ([
 // handleInteractionCreate for InteractionApplicationCommand interactions.
 func handleSlashCommandInteraction(evt *eventsystem.EventData, cs *dstate.ChannelState, interaction *templates.CustomCommandInteraction) {
 	data := interaction.DataCommand
-	if data == nil || interaction.Member == nil {
+	if data == nil || data.GuildID == 0 || interaction.Member == nil {
 		return
 	}
 

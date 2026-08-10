@@ -226,7 +226,7 @@ the punishment, is an <a href="https://help.yagpdb.xyz/docs/reference/templates/
     <div class="col-sm">
         <div class="form-group">
             <label>Timeout DM (Leave empty for default)</label>
-            <textarea rows="5" class="form-control" name="TimeoutMessage"
+            <textarea rows="5" class="form-control template-editor" name="TimeoutMessage"
                 placeholder="{{.DefaultDMMessage}}">{{or .ModConfig.TimeoutMessage .DefaultDMMessage}}</textarea>
             <p class="help-block">
                 Available template data:<br />
