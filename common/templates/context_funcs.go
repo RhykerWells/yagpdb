@@ -115,28 +115,30 @@ func (c *Context) tmplSendDM(s ...interface{}) string {
 	return ""
 }
 
-func (c *Context) tmplSendTargetDM(target interface{}, s ...interface{}) string {
+func (c *Context) tmplSendTargetDM(returnID bool) func(target interface{}, s ...interface{}) (any, error) {
+	return func(target interface{}, s ...interface{}) (any, error) {
+
 	if len(s) < 1 || c.IncreaseCheckCallCounter("send_dm", 1) || c.IncreaseCheckGenericAPICall() || c.MS == nil {
-		return ""
+			return "", nil
 	}
 
 	targetID := TargetUserID(target)
 	if targetID == 0 {
-		return ""
+		return "", nil
 	}
 
 	ts, err := bot.GetMember(c.GS.ID, targetID)
 	if err != nil {
-		return ""
+		return "", nil
 	}
 
 	msgSend, err := c.parseMessageInput(s[0])
 	if err != nil {
-		return ""
+		return "", nil
 	}
 
 	if (len(msgSend.Embeds) == 0 && strings.TrimSpace(msgSend.Content) == "") && (msgSend.File == nil) && (len(msgSend.Components) == 0) {
-		return ""
+		return "", nil
 	}
 
 	if msgSend.Content != "" && reflect.TypeOf(s[0]).Kind() != reflect.Ptr && reflect.TypeOf(s[0]).Kind() != reflect.Struct {
@@ -155,18 +157,28 @@ func (c *Context) tmplSendTargetDM(target interface{}, s ...interface{}) string 
 				if !hasPerms {
 					msgSend.Reference = &discordgo.MessageReference{}
 				}
-			} else {
-				msgSend.Reference = &discordgo.MessageReference{}
+				} else {
+					msgSend.Reference = &discordgo.MessageReference{}
+				}
 			}
 		}
-	}
 
-	channel, err := common.BotSession.UserChannelCreate(ts.User.ID)
-	if err != nil {
-		return ""
+		channel, err := common.BotSession.UserChannelCreate(ts.User.ID)
+		if err != nil {
+			return "", nil
+		}
+
+		m, err := common.BotSession.ChannelMessageSendComplex(channel.ID, msgSend)
+		if err != nil {
+			return "", err
+		}
+
+		if returnID {
+			return m.ID, nil
+		}
+
+		return "", nil
 	}
-	_, _ = common.BotSession.ChannelMessageSendComplex(channel.ID, msgSend)
-	return ""
 }
 
 func (c *Context) baseChannelArg(v interface{}) *dstate.ChannelState {
