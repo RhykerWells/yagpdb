@@ -276,6 +276,32 @@ func (t *Template) execute(wr io.Writer, data interface{}) (err error) {
 	return
 }
 
+// ExecuteReturn applies a parsed template to the specified data object and
+// returns the value provided by a top-level {{return ...}} statement if any.
+// If no return was used, the zero reflect.Value is returned. Any execution
+// error is returned as error.
+func (t *Template) ExecuteReturn(data interface{}) (ret reflect.Value, err error) {
+	defer errRecover(&err)
+	value, ok := data.(reflect.Value)
+	if !ok {
+		value = reflect.ValueOf(data)
+	}
+	state := &state{
+		tmpl: t,
+		wr:   io.Discard,
+		vars: []variable{{"$", value}},
+	}
+	if t.Tree == nil || t.Root == nil {
+		state.errorf("%q is an incomplete or empty template", t.Name())
+	}
+
+	sig := state.walk(value, t.Root)
+	if sig == controlFlowReturnValue {
+		return state.returnValue, nil
+	}
+	return reflect.Value{}, nil
+}
+
 // DefinedTemplates returns a string listing the defined templates,
 // prefixed by the string "; defined templates are: ". If there are none,
 // it returns the empty string. For generating an error message here

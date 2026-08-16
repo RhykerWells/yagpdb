@@ -5,8 +5,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"slices"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"emperror.dev/errors"
 	"github.com/RhykerWells/yagpdb/v2/bot"
@@ -177,7 +180,7 @@ func (pa *ParsedArgs) IsSet(index int) interface{} {
 // tmplRunCC either run another custom command immeditely with a max stack depth of 2
 // or schedules a custom command to be run in the future sometime with the provided data placed in .ExecData
 func tmplRunCC(ctx *templates.Context) interface{} {
-	return func(ccID int, channel interface{}, delaySeconds interface{}, data interface{}) (string, error) {
+	return func(ccID int, channel interface{}, delaySeconds interface{}, data interface{}) (interface{}, error) {
 		if ctx.ExecutedFrom == templates.ExecutedFromNestedCommandTemplate {
 			return "", nil
 		}
@@ -245,8 +248,76 @@ func tmplRunCC(ctx *templates.Context) interface{} {
 			newCtx.Data["StackDepth"] = currentStackDepth + 1
 			newCtx.ExecutedFrom = ctx.ExecutedFrom
 
-			go ExecuteCustomCommand(cmd, newCtx)
-			return "", nil
+			// Parse and execute the chosen response in the current template context
+			chanMsg := cmd.Responses[rand.Intn(len(cmd.Responses))]
+
+			// Parse and execute the chosen response with ExecData and increased StackDepth,
+			// capturing its return value or falling back to a string.
+			prevExecData := ctx.Data["ExecData"]
+			prevStackDepth := ctx.Data["StackDepth"]
+			ctx.Data["ExecData"] = data
+			ctx.Data["StackDepth"] = currentStackDepth + 1
+
+			parsed, err := ctx.Parse(chanMsg)
+			if err != nil {
+				// restore
+				ctx.Data["ExecData"] = prevExecData
+				ctx.Data["StackDepth"] = prevStackDepth
+				return nil, err
+			}
+
+			rv, err := parsed.ExecuteReturn(ctx.Data)
+			if err != nil {
+				logger.WithField("guild", ctx.GS.ID).WithError(err).Error("Error executing custom command")
+
+				errChannel := getErrorChannel(cmd, ctx)
+				if cmd.ShowErrors && errChannel != 0 {
+					outStr := "\nAn error caused the execution of the custom command template to stop:\n"
+					outStr += formatCustomCommandRunErr(chanMsg, err)
+					common.BotSession.ChannelMessageSend(errChannel, outStr)
+				}
+
+				// restore
+				ctx.Data["ExecData"] = prevExecData
+				ctx.Data["StackDepth"] = prevStackDepth
+
+				go updatePostCommandRan(cmd, err)
+				return nil, err
+			}
+
+			// restore
+			ctx.Data["ExecData"] = prevExecData
+			ctx.Data["StackDepth"] = prevStackDepth
+
+			go updatePostCommandRan(cmd, nil)
+
+			if rv.IsValid() {
+				return rv.Interface(), nil
+			}
+
+			// No return value; run to string as fallback.
+			var buf bytes.Buffer
+			err = parsed.Execute(&buf, ctx.Data)
+			out := strings.TrimSpace(buf.String())
+			if err != nil {
+				logger.WithField("guild", ctx.GS.ID).WithError(err).Error("Error executing custom command")
+
+				errChannel := getErrorChannel(cmd, ctx)
+				if cmd.ShowErrors && errChannel != 0 {
+					out += "\nAn error caused the execution of the custom command template to stop:\n"
+					out += formatCustomCommandRunErr(chanMsg, err)
+					common.BotSession.ChannelMessageSend(errChannel, out)
+				}
+
+				go updatePostCommandRan(cmd, err)
+				return nil, err
+			}
+
+			if utf8.RuneCountInString(out) > 2000 {
+				out = "Custom command (#" + discordgo.StrID(cmd.LocalID) + ") response was longer than 2k (contact an admin on the server...)"
+			}
+
+			return out, nil
 		}
 
 		m := &DelayedRunCCData{
