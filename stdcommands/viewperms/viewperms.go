@@ -21,7 +21,7 @@ var Command = &commands.YAGCommand{
 		{Name: "target", Type: dcmd.UserID, Default: int64(0)},
 	},
 	ArgSwitches: []*dcmd.ArgDef{
-		{Name: "channel", Type: dcmd.Channel},
+		{Name: "channel", Type: dcmd.ChannelOrThread},
 	},
 	RunFunc: func(data *dcmd.Data) (interface{}, error) {
 		var target *dstate.MemberState
