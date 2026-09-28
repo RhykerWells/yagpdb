@@ -156,6 +156,12 @@ var (
 	contextSetupFuncs = []ContextSetupFunc{}
 )
 
+// UserTimezoneLookup can be set by the timezonecompanion plugin to allow
+// templates to resolve a user's registered timezone without importing the
+// plugin directly (avoids import cycles). It should return a *time.Location
+// or nil if none registered.
+var UserTimezoneLookup func(userID int64) *time.Location
+
 var logger = common.GetFixedPrefixLogger("templates")
 
 type ContextSetupFunc func(ctx *Context)
@@ -898,6 +904,13 @@ func baseContextFuncs(c *Context) {
 	c.addContextFunc("currentUserAgeHuman", c.tmplCurrentUserAgeHuman)
 	c.addContextFunc("currentUserAgeMinutes", c.tmplCurrentUserAgeMinutes)
 	c.addContextFunc("currentUserCreated", c.tmplCurrentUserCreated)
+
+	// timezone-aware helpers (parse/now using user or explicit TZ)
+	c.addContextFunc("userHasTZ", c.tmplUserHasTZ)
+	c.addContextFunc("unixInTZ", c.tmplUnixInTZ)
+	c.addContextFunc("nowInTZ", c.tmplNowInTZ)
+	c.addContextFunc("parseTimeInTZ", c.tmplParseTimeInTZ)
+	c.addContextFunc("durationUntil", c.tmplDurationUntil)
 
 	// RegEx functions
 	c.addContextFunc("reFind", c.reFind)

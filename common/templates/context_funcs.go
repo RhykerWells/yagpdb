@@ -2069,6 +2069,180 @@ func (c *Context) tmplCurrentUserCreated() time.Time {
 	return t
 }
 
+// tmplUserHasTZ returns whether the user has a timezone set
+func (c *Context) tmplUserHasTZ(userID interface{}) bool {
+	if UserTimezoneLookup == nil {
+		return false
+	}
+
+	uID := ToInt64(userID)
+	return UserTimezoneLookup(uID) != nil
+}
+
+func (c *Context) tmplUnixInTZ(unix int64, tzArg interface{}) (time.Time, error) {
+	loc, err := c.resolveTZArg(tzArg)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Unix(unix, 0).In(loc), nil
+}
+
+func (c *Context) tmplParseTimeInTZ(input string, layout interface{}, tzArg interface{}) (time.Time, error) {
+	loc, err := c.resolveTZArg(tzArg)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	rv, _ := indirect(reflect.ValueOf(layout))
+
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Array:
+		if rv.Len() > 50 {
+			return time.Time{}, errors.New("max number of layouts is 50")
+		}
+
+		for i := 0; i < rv.Len(); i++ {
+			lv, _ := indirect(rv.Index(i))
+			if lv.Kind() != reflect.String {
+				return time.Time{}, errors.New("layout must be either a slice of strings or a single string")
+			}
+
+			parsed, err := time.ParseInLocation(lv.String(), input, loc)
+			if err == nil {
+				return parsed, nil
+			}
+		}
+
+	case reflect.String:
+		parsed, err := time.ParseInLocation(rv.String(), input, loc)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return parsed, nil
+
+	default:
+		return time.Time{}, errors.New("layout must be either a slice of strings or a single string")
+	}
+
+	return time.Time{}, errors.New("unable to parse time")
+}
+
+// tmplNowInTZ returns current time in the provided timezone. tzArg may be:
+// - nil: use the executing user's registered timezone if available, else UTC
+// - string: a TZ database name passed to time.LoadLocation
+// - numeric user id: resolved via timezonecompanion.GetUserTimezone
+func (c *Context) tmplNowInTZ(tzArg interface{}) (time.Time, error) {
+	loc, err := c.resolveTZArg(tzArg)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Now().In(loc), nil
+}
+
+// tmplDurationUntil parses a time-only string (like "09:00") in the given
+// timezone (tzArg semantics same as resolveTZArg) and returns the duration
+// until the next occurrence of that time from 'now' in that timezone.
+// layout may be nil or a time layout string like "15:04" or "15:04:05".
+func (c *Context) tmplDurationUntil(input string, layout interface{}, tzArg interface{}) (time.Duration, error) {
+	loc, err := c.resolveTZArg(tzArg)
+	if err != nil {
+		return 0, err
+	}
+
+	now := time.Now().In(loc)
+
+	// determine hour, min, sec
+	var hour, min, sec int
+	if layout == nil {
+		parts := strings.Split(input, ":")
+		if len(parts) < 1 || len(parts) > 3 {
+			return 0, errors.New("invalid time format, expected H:MM or HH:MM")
+		}
+		// parse components
+		var p0, p1, p2 int
+		if len(parts) >= 1 {
+			p0 = tmplToInt(parts[0])
+		}
+		if len(parts) >= 2 {
+			p1 = tmplToInt(parts[1])
+		}
+		if len(parts) == 3 {
+			p2 = tmplToInt(parts[2])
+		}
+		hour = p0
+		min = p1
+		sec = p2
+	} else {
+		// try to handle provided layout by parsing then extracting H/M/S
+		lrv, _ := indirect(reflect.ValueOf(layout))
+		if lrv.Kind() == reflect.String {
+			parsed, err := time.ParseInLocation(lrv.String(), input, loc)
+			if err != nil {
+				return 0, err
+			}
+			hour, min, sec = parsed.Hour(), parsed.Minute(), parsed.Second()
+		} else {
+			return 0, errors.New("layout must be a string")
+		}
+	}
+
+	// build target time today in location
+	target := time.Date(now.Year(), now.Month(), now.Day(), hour, min, sec, 0, loc)
+	if !target.After(now) {
+		target = target.Add(24 * time.Hour)
+	}
+
+	return target.Sub(now), nil
+}
+
+// resolveTZArg resolves a timezone argument to a *time.Location.
+// If tzArg is nil, try to use the executing user's registered timezone.
+func (c *Context) resolveTZArg(tzArg interface{}) (*time.Location, error) {
+	// prefer explicitly supplied tzArg
+	if tzArg == nil {
+		if c.MS != nil && UserTimezoneLookup != nil {
+			loc := UserTimezoneLookup(c.MS.User.ID)
+			if loc != nil {
+				return loc, nil
+			}
+		}
+		return time.UTC, nil
+	}
+
+	switch v := tzArg.(type) {
+	case string:
+		loc, err := time.LoadLocation(v)
+		if err != nil {
+			return nil, err
+		}
+		return loc, nil
+	case int, int64, uint64, float64:
+		uid := ToInt64(v)
+		if uid == 0 {
+			return time.UTC, nil
+		}
+		if UserTimezoneLookup != nil {
+			loc := UserTimezoneLookup(uid)
+			if loc != nil {
+				return loc, nil
+			}
+		}
+		return time.UTC, nil
+	default:
+		// attempt to stringify and load location name
+		s := ToString(v)
+		if s == "" {
+			return time.UTC, nil
+		}
+		loc, err := time.LoadLocation(s)
+		if err != nil {
+			return nil, err
+		}
+		return loc, nil
+	}
+}
+
 func (c *Context) tmplSleep(duration interface{}) (string, error) {
 	seconds := tmplToInt(duration)
 	if c.secondsSlept+seconds > 60 || seconds < 1 {

@@ -2,9 +2,17 @@ package dca
 
 import (
 	"testing"
+	"os/exec"
 )
 
 func TestEncode(t *testing.T) {
+	// External tools required for this test
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not installed; skipping encode test")
+	}
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("ffprobe not installed; skipping encode test")
+	}
 	session, err := EncodeFile("testaudio.ogg", StdEncodeOptions)
 	if err != nil {
 		t.Fatal("Failed creating encoding session", err)

@@ -7,6 +7,7 @@ import (
 	"github.com/RhykerWells/yagpdb/v2/lib/when"
 	"github.com/RhykerWells/yagpdb/v2/lib/when/rules"
 	"github.com/RhykerWells/yagpdb/v2/timezonecompanion/trules"
+	"github.com/RhykerWells/yagpdb/v2/common/templates"
 )
 
 type Plugin struct {
@@ -35,4 +36,6 @@ func RegisterPlugin() {
 	common.RegisterPlugin(&Plugin{
 		DateParser: w,
 	})
+	// register user timezone lookup for templates package to avoid import cycles
+	templates.UserTimezoneLookup = GetUserTimezone
 }
